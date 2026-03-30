@@ -729,31 +729,58 @@ const EmailInbox=()=>{
 };
 
 // ===== EMAIL SETTINGS =====
+const EField=({label,fk,type,placeholder,cfg,sCfg})=>{
+  const num=type==='number';
+  return <div className="form-group">
+    <label className="lbl">{label}</label>
+    <input className="inp" type={type||'text'} placeholder={placeholder||''} value={cfg[fk]||''} onChange={e=>sCfg(c=>({...c,[fk]:num?parseInt(e.target.value)||0:e.target.value}))}/>
+  </div>;
+};
+const ECheck=({label,fk,cfg,sCfg})=>(
+  <label className="flex items-center gap-2 text-sm cursor-pointer">
+    <input type="checkbox" checked={!!cfg[fk]} onChange={e=>sCfg(c=>({...c,[fk]:e.target.checked}))}/>
+    {label}
+  </label>
+);
 const EmailSettings=()=>{
   const[cfg,sCfg]=useState({smtp_host:'',smtp_port:587,smtp_user:'',smtp_pass:'',smtp_secure:false,imap_host:'',imap_port:993,imap_user:'',imap_pass:'',from_name:'ServiceDesk Pro',from_email:'',notifications_enabled:true,auto_ticket_enabled:true});
   const[msg,sMsg]=useState(null);const[testing,sTesting]=useState(false);
-  useEffect(()=>{api.get('/api/email/config').then(r=>{if(!r.error)sCfg({...cfg,...r,smtp_secure:r.smtp_secure===1,notifications_enabled:r.notifications_enabled===1,auto_ticket_enabled:r.auto_ticket_enabled===1})})},[]);
+  useEffect(()=>{api.get('/api/email/config').then(r=>{if(!r.error)sCfg(c=>({...c,...r,smtp_secure:r.smtp_secure===1,notifications_enabled:r.notifications_enabled===1,auto_ticket_enabled:r.auto_ticket_enabled===1}))})},[]);
   const save=async()=>{const r=await api.put('/api/email/config',cfg);if(r.success)sMsg({t:'s',m:'Einstellungen gespeichert'});else sMsg({t:'e',m:r.error})};
   const testSmtp=async()=>{sTesting(true);const r=await api.post('/api/email/test-smtp',{});sMsg(r.success?{t:'s',m:r.message}:{t:'e',m:r.error});sTesting(false)};
-  const F=({label,k,type='text',placeholder=''})=><div className="form-group"><label className="lbl">{label}</label><input className="inp" type={type} placeholder={placeholder} value={cfg[k]||''} onChange={e=>sCfg({...cfg,[k]:type==='number'?parseInt(e.target.value):e.target.value})}/></div>;
-  const C=({label,k})=><label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={!!cfg[k]} onChange={e=>sCfg({...cfg,[k]:e.target.checked})}/>{label}</label>;
+  const fp={cfg,sCfg};
   return <div className="fade" style={{display:'flex',flexDirection:'column',gap:16}}>
     <div className="ph"><span className="pt">E-Mail Einstellungen</span><div className="flex gap-2"><button onClick={testSmtp} className="btn btn-tg btn-sm" disabled={testing}><I n="check" s={14}/>{testing?'Teste…':'SMTP testen'}</button><button onClick={save} className="btn btn-p btn-sm"><I n="check" s={14}/>Speichern</button></div></div>
     {msg&&<div className={`alert ${msg.t==='s'?'alert-s':'alert-e'}`}><I n={msg.t==='s'?'check':'alertC'} s={14}/>{msg.m}</div>}
     <div className="sett-card">
       <div className="sett-title">SMTP – Ausgehende E-Mails</div>
       <div className="sett-desc">Für Benachrichtigungen und Antworten aus Tickets</div>
-      <div className="g2"><F label="SMTP Host" k="smtp_host" placeholder="smtp.gmail.com"/><F label="SMTP Port" k="smtp_port" type="number"/><F label="Benutzername" k="smtp_user" placeholder="user@gmail.com"/><F label="Passwort" k="smtp_pass" type="password" placeholder="App-Passwort"/><F label="Absender Name" k="from_name"/><F label="Absender E-Mail" k="from_email" placeholder="servicedesk@example.com"/></div>
-      <div className="mt-3"><C label="SSL/TLS verwenden" k="smtp_secure"/></div>
+      <div className="g2">
+        <EField label="SMTP Host" fk="smtp_host" placeholder="smtp.gmail.com" {...fp}/>
+        <EField label="SMTP Port" fk="smtp_port" type="number" {...fp}/>
+        <EField label="Benutzername" fk="smtp_user" placeholder="user@gmail.com" {...fp}/>
+        <EField label="Passwort" fk="smtp_pass" type="password" placeholder="App-Passwort" {...fp}/>
+        <EField label="Absender Name" fk="from_name" {...fp}/>
+        <EField label="Absender E-Mail" fk="from_email" placeholder="servicedesk@example.com" {...fp}/>
+      </div>
+      <div className="mt-3"><ECheck label="SSL/TLS verwenden" fk="smtp_secure" {...fp}/></div>
     </div>
     <div className="sett-card">
       <div className="sett-title">IMAP – Eingehende E-Mails</div>
       <div className="sett-desc">E-Mails abrufen und automatisch Tickets erstellen</div>
-      <div className="g2"><F label="IMAP Host" k="imap_host" placeholder="imap.gmail.com"/><F label="IMAP Port" k="imap_port" type="number"/><F label="Benutzername" k="imap_user"/><F label="Passwort" k="imap_pass" type="password"/></div>
+      <div className="g2">
+        <EField label="IMAP Host" fk="imap_host" placeholder="imap.gmail.com" {...fp}/>
+        <EField label="IMAP Port" fk="imap_port" type="number" {...fp}/>
+        <EField label="Benutzername" fk="imap_user" {...fp}/>
+        <EField label="Passwort" fk="imap_pass" type="password" {...fp}/>
+      </div>
     </div>
     <div className="sett-card">
       <div className="sett-title">Verhalten</div>
-      <div style={{display:'flex',flexDirection:'column',gap:10,marginTop:8}}><C label="E-Mail-Benachrichtigungen senden (bei Ticket-Erstellung und Status-Änderungen)" k="notifications_enabled"/><C label="Automatisch Ticket erstellen wenn E-Mail eingeht" k="auto_ticket_enabled"/></div>
+      <div style={{display:'flex',flexDirection:'column',gap:10,marginTop:8}}>
+        <ECheck label="E-Mail-Benachrichtigungen senden (bei Ticket-Erstellung und Status-Änderungen)" fk="notifications_enabled" {...fp}/>
+        <ECheck label="Automatisch Ticket erstellen wenn E-Mail eingeht" fk="auto_ticket_enabled" {...fp}/>
+      </div>
     </div>
   </div>;
 };
