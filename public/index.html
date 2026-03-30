@@ -703,19 +703,24 @@ const NewChange=({onSave})=>{
 // ===== EMAIL INBOX =====
 // ===== HTML VIEW =====
 const HtmlView=({html,maxHeight})=>{
-  const mh=maxHeight||400;const ref=React.useRef(null);
+  const mh=maxHeight||400;
+  const ref=React.useRef(null);
   if(!html||!html.trim())return null;
-  const isH=html.includes('<p')||html.includes('<div')||html.includes('<br')||html.includes('<img')||html.includes('<table')||html.includes('<ul')||html.includes('<b>')||html.includes('<i>')||html.includes('<font');
-  React.useEffect(()=>{
-    if(!ref.current||!isH)return;
-    const doc=ref.current.contentDocument||ref.current.contentWindow.document;
-    const css='*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;line-height:1.6;margin:0;padding:12px 14px;color:#1e293b;word-break:break-word}img{max-width:100%;height:auto}a{color:#0d9488}table{max-width:100%;border-collapse:collapse}td,th{padding:4px 8px;border:1px solid #e2e8f0}blockquote{border-left:3px solid #0d9488;margin:8px 0;padding:4px 12px;color:#64748b;background:#f8fafc}';
-    doc.open();doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+css+'</style></head><body>'+html+'</body></html>');doc.close();
-    try{ref.current.style.height=Math.min(doc.body.scrollHeight+24,mh)+'px';}catch(e){}
-  },[html]);
+  const isH=html.includes('<')||html.includes('&nbsp;')||html.includes('&#');
+  const write=React.useCallback(()=>{
+    if(!ref.current)return;
+    try{
+      const doc=ref.current.contentDocument||ref.current.contentWindow.document;
+      const css='*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;line-height:1.6;margin:0;padding:12px 14px;color:#1e293b;word-break:break-word}img{max-width:100%;height:auto}a{color:#0d9488}table{max-width:100%;border-collapse:collapse;width:100%}td,th{padding:4px 8px;border:1px solid #e2e8f0}blockquote{border-left:3px solid #0d9488;margin:8px 0;padding:4px 12px;color:#64748b}';
+      doc.open();doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+css+'</style></head><body>'+html+'</body></html>');doc.close();
+      setTimeout(()=>{try{if(ref.current)ref.current.style.height=Math.min(doc.body.scrollHeight+24,mh)+'px';}catch(e){}},150);
+    }catch(e){console.warn('HtmlView:',e);}
+  },[html,mh]);
+  React.useEffect(write,[write]);
   if(!isH)return <div style={{background:'var(--bg)',borderRadius:8,padding:'10px 12px',fontSize:13,lineHeight:1.6,whiteSpace:'pre-wrap',wordBreak:'break-word',maxHeight:mh,overflowY:'auto'}}>{html}</div>;
-  return <iframe ref={ref} sandbox="allow-same-origin" style={{width:'100%',border:'none',borderRadius:8,background:'var(--bg)',minHeight:60,maxHeight:mh,display:'block'}} title="html"/>;
+  return <iframe ref={ref} onLoad={write} sandbox="allow-same-origin" style={{width:'100%',border:'none',borderRadius:8,background:'var(--bg)',minHeight:80,maxHeight:mh,display:'block'}} title="html-view"/>;
 };
+
 
 const EmailInbox=()=>{
   const[items,sItems]=useState([]);const[loading,sL]=useState(true);const[sel,sSel]=useState(null);const[polling,sPolling]=useState(false);

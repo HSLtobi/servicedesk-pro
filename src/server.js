@@ -146,6 +146,47 @@ async function sendMail(to, subject, html, ticketId = null) {
   }
 }
 
+
+// ===== MIME BODY EXTRACTOR =====
+function extractBody(source) {
+  const raw = source.toString();
+  const boundaryMatch = raw.match(/boundary="?([^"\r\n;]+)"?/i);
+  if (!boundaryMatch) {
+    // Simple non-multipart email
+    const headerEnd = raw.indexOf('\r\n\r\n');
+    if (headerEnd === -1) return raw.slice(0, 3000);
+    const body = raw.slice(headerEnd + 4);
+    const isQP = /content-transfer-encoding:\s*quoted-printable/i.test(raw.slice(0, headerEnd));
+    const isB64 = /content-transfer-encoding:\s*base64/i.test(raw.slice(0, headerEnd));
+    if (isQP) return decodeQP(body);
+    if (isB64) { try { return Buffer.from(body.replace(/\s/g,''),'base64').toString('utf-8'); } catch(e) {} }
+    return body.slice(0, 5000);
+  }
+  const boundary = '--' + boundaryMatch[1].trim();
+  const parts = raw.split(boundary);
+  let html = '', text = '';
+  for (const part of parts) {
+    if (!part || part === '--' || part.trim() === '--') continue;
+    const headerEnd = part.indexOf('\r\n\r\n');
+    if (headerEnd === -1) continue;
+    const headers = part.slice(0, headerEnd).toLowerCase();
+    let body = part.slice(headerEnd + 4);
+    if (body.endsWith('\r\n')) body = body.slice(0, -2);
+    const isQP = headers.includes('quoted-printable');
+    const isB64 = headers.includes('base64');
+    if (isQP) body = decodeQP(body);
+    else if (isB64) { try { body = Buffer.from(body.replace(/\s/g,''),'base64').toString('utf-8'); } catch(e) {} }
+    if (headers.includes('text/html') && !html) html = body;
+    else if (headers.includes('text/plain') && !text) text = body;
+  }
+  if (html) return html;
+  if (text) return text.replace(/\n/g, '<br>');
+  return raw.slice(0, 3000);
+}
+function decodeQP(s) {
+  return s.replace(/=\r\n/g,'').replace(/=([0-9A-Fa-f]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));
+}
+
 async function pollImap() {
   const cfg = getEmailConfig();
   if (!cfg.auto_ticket_enabled || !cfg.imap_host || !cfg.imap_user) return;
@@ -167,7 +208,7 @@ async function pollImap() {
       const fromEmail = fromAddr?.address || '';
       const fromName = fromAddr?.name || fromAddr?.address || '';
       const subject = msg.envelope.subject || '(Kein Betreff)';
-      const body = msg.source ? msg.source.toString() : '';
+      const body = msg.source ? extractBody(msg.source) : '';
       const received = msg.envelope.date?.toISOString() || new Date().toISOString();
 
       const result = db.prepare('INSERT INTO email_inbox (message_id, from_email, from_name, subject, body, received_at) VALUES (?,?,?,?,?,?)').run(msgId, fromEmail, fromName, subject, body, received);
@@ -175,7 +216,7 @@ async function pollImap() {
       if (cfg.auto_ticket_enabled) {
         const ticketNum = nextNumber('TK');
         const tkResult = db.prepare(`INSERT INTO tickets (ticket_number, title, description, priority, category, requester_name, requester_email, requester_type, created_by) VALUES (?,?,?,?,?,?,?,?,1)`)
-          .run(ticketNum, subject.substring(0, 200), body.substring(0, 2000), 'medium', 'E-Mail', fromName || fromEmail, fromEmail, 'external');
+          .run(ticketNum, subject.substring(0, 200), body.substring(0, 8000), 'medium', 'E-Mail', fromName || fromEmail, fromEmail, 'external');
         db.prepare('UPDATE email_inbox SET ticket_id = ?, processed = 1 WHERE id = ?').run(tkResult.lastInsertRowid, result.lastInsertRowid);
         console.log(`📧 Ticket ${ticketNum} aus E-Mail erstellt: ${subject}`);
       }
