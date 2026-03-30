@@ -431,7 +431,7 @@ const TicketDetail=({ticket,onClose,agents,onUpdate,user})=>{
           {[[<SBadge s={ticket.status}/>,{label:'Status'}],[<PBadge p={ticket.priority}/>,{label:'Priorität'}],[ticket.requester_name||'—',{label:'Anfragender'}],[ticket.requester_email||'—',{label:'E-Mail'}],[ticket.category||'—',{label:'Kategorie'}],[ticket.assignee_name||'Nicht zugewiesen',{label:'Zugewiesen'}]].map(([v,{label}],i)=>(
             <div key={i}><div className="text-xs text-muted mb-1">{label}</div><div className="text-sm font-medium">{v}</div></div>))}
         </div>
-        {ticket.description&&<div className="mt-3"><div className="text-xs text-muted mb-1">Beschreibung</div><div className="text-sm" style={{background:'var(--bg)',borderRadius:8,padding:'10px 12px',lineHeight:1.6}}>{ticket.description}</div></div>}
+        {ticket.description&&<div className="mt-3"><div className="text-xs text-muted mb-1">Beschreibung</div><HtmlView html={ticket.description} maxHeight={320}/></div>}
       </div>
       <div style={{borderTop:'1px solid var(--bd)',paddingTop:16}}>
         <div className="flex gap-2 mb-3 flex-wrap">
@@ -456,7 +456,19 @@ const TicketDetail=({ticket,onClose,agents,onUpdate,user})=>{
         </div>}
         {emailTab==='email'&&<div style={{display:'flex',flexDirection:'column',gap:10}}>
           <div className="form-group"><label className="lbl">An (E-Mail)</label><input className="inp" placeholder="empfaenger@example.com" value={emailTo} onChange={e=>sEmailTo(e.target.value)}/></div>
-          <div className="form-group"><label className="lbl">Nachricht</label><textarea className="inp" rows={4} placeholder="Ihre Nachricht an den Kunden…" value={emailBody} onChange={e=>sEmailBody(e.target.value)}/></div>
+          <div className="form-group"><label className="lbl">Nachricht</label>
+            <div style={{border:'1px solid var(--bd)',borderRadius:8,overflow:'hidden'}}>
+              <div style={{display:'flex',gap:4,padding:'5px 8px',background:'var(--pb)',borderBottom:'1px solid var(--bd)',flexWrap:'wrap'}}>
+                {[['<b>F</b>','b'],['<i>K</i>','i'],['<u>U</u>','u']].map(([lbl,tag])=>(
+                  <button key={tag} type="button" onClick={()=>{const ta=document.getElementById('ota');if(!ta)return;const s=ta.selectionStart,e2=ta.selectionEnd,t=emailBody.slice(s,e2);sEmailBody(emailBody.slice(0,s)+'<'+tag+'>'+t+'</'+tag+'>'+emailBody.slice(e2));}} style={{background:'var(--bg)',border:'1px solid var(--bd)',borderRadius:4,cursor:'pointer',padding:'1px 7px',fontSize:12,lineHeight:1.5}} dangerouslySetInnerHTML={{__html:lbl}}/>
+                ))}
+                <button type="button" onClick={()=>sEmailBody(b=>b+'<br/>')} style={{background:'var(--bg)',border:'1px solid var(--bd)',borderRadius:4,cursor:'pointer',padding:'1px 7px',fontSize:12}}>&#8629; Zeilenumbruch</button>
+                <button type="button" onClick={()=>sEmailBody(b=>b+'<ul><li></li></ul>')} style={{background:'var(--bg)',border:'1px solid var(--bd)',borderRadius:4,cursor:'pointer',padding:'1px 7px',fontSize:12}}>&bull; Liste</button>
+              </div>
+              <textarea id="ota" className="inp" rows={5} placeholder="Nachricht... HTML wird unterstuetzt" value={emailBody} onChange={e=>sEmailBody(e.target.value)} style={{border:'none',borderRadius:0,borderBottomLeftRadius:8,borderBottomRightRadius:8}}/>
+            </div>
+            {emailBody&&<details style={{marginTop:6}}><summary className="text-xs text-muted" style={{cursor:'pointer'}}>Vorschau anzeigen</summary><div style={{marginTop:4}}><HtmlView html={emailBody} maxHeight={180}/></div></details>}
+          </div>
           <div className="flex justify-end"><button onClick={sendEmail} className="btn btn-p btn-sm" disabled={!emailTo||!emailBody||sending}><I n="send" s={13}/>{sending?'Wird gesendet…':'E-Mail senden'}</button></div>
         </div>}
         {emailTab==='history'&&<div style={{display:'flex',flexDirection:'column',gap:8}}>
@@ -466,7 +478,7 @@ const TicketDetail=({ticket,onClose,agents,onUpdate,user})=>{
                 <span className="text-xs font-semibold">{c.user_name||'System'}</span>
                 <span className="text-xs text-muted">{c.created_at?.slice(0,16)}{c.is_internal&&<Badge label="Intern" v="bw" style={{marginLeft:6}}/>}</span>
               </div>
-              <div className="text-sm" style={{lineHeight:1.5}}>{c.content}</div>
+              <HtmlView html={c.content} maxHeight={300}/>
             </div>))}
         </div>}
         {emailTab==='emails'&&<div style={{display:'flex',flexDirection:'column',gap:6}}>
@@ -476,7 +488,8 @@ const TicketDetail=({ticket,onClose,agents,onUpdate,user})=>{
                 <span className="text-xs font-semibold">{e.direction==='sent'?`→ ${e.to_email}`:`← ${e.from_email}`}</span>
                 <span className="text-xs text-muted">{e.sent_at?.slice(0,16)}</span>
               </div>
-              <div className="text-xs font-medium text-muted">{e.subject}</div>
+              <div className="text-xs font-medium text-muted mb-2">{e.subject}</div>
+              {e.body&&<HtmlView html={e.body} maxHeight={260}/>}
             </div>))}
         </div>}
       </div>
@@ -688,6 +701,22 @@ const NewChange=({onSave})=>{
 };
 
 // ===== EMAIL INBOX =====
+// ===== HTML VIEW =====
+const HtmlView=({html,maxHeight})=>{
+  const mh=maxHeight||400;const ref=React.useRef(null);
+  if(!html||!html.trim())return null;
+  const isH=html.includes('<p')||html.includes('<div')||html.includes('<br')||html.includes('<img')||html.includes('<table')||html.includes('<ul')||html.includes('<b>')||html.includes('<i>')||html.includes('<font');
+  React.useEffect(()=>{
+    if(!ref.current||!isH)return;
+    const doc=ref.current.contentDocument||ref.current.contentWindow.document;
+    const css='*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;line-height:1.6;margin:0;padding:12px 14px;color:#1e293b;word-break:break-word}img{max-width:100%;height:auto}a{color:#0d9488}table{max-width:100%;border-collapse:collapse}td,th{padding:4px 8px;border:1px solid #e2e8f0}blockquote{border-left:3px solid #0d9488;margin:8px 0;padding:4px 12px;color:#64748b;background:#f8fafc}';
+    doc.open();doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+css+'</style></head><body>'+html+'</body></html>');doc.close();
+    try{ref.current.style.height=Math.min(doc.body.scrollHeight+24,mh)+'px';}catch(e){}
+  },[html]);
+  if(!isH)return <div style={{background:'var(--bg)',borderRadius:8,padding:'10px 12px',fontSize:13,lineHeight:1.6,whiteSpace:'pre-wrap',wordBreak:'break-word',maxHeight:mh,overflowY:'auto'}}>{html}</div>;
+  return <iframe ref={ref} sandbox="allow-same-origin" style={{width:'100%',border:'none',borderRadius:8,background:'var(--bg)',minHeight:60,maxHeight:mh,display:'block'}} title="html"/>;
+};
+
 const EmailInbox=()=>{
   const[items,sItems]=useState([]);const[loading,sL]=useState(true);const[sel,sSel]=useState(null);const[polling,sPolling]=useState(false);
   const load=()=>{sL(true);api.get('/api/email/inbox?limit=50').then(r=>{sItems(r.data||[]);sL(false)})};
@@ -722,7 +751,7 @@ const EmailInbox=()=>{
       {sel&&<div style={{display:'flex',flexDirection:'column',gap:12}}>
         <div className="g2"><div><div className="text-xs text-muted mb-1">Von</div><div className="text-sm font-medium">{sel.from_name} &lt;{sel.from_email}&gt;</div></div><div><div className="text-xs text-muted mb-1">Empfangen</div><div className="text-sm">{sel.received_at?.slice(0,16)}</div></div></div>
         {sel.ticket_id&&<div className="alert alert-i"><I n="link" s={14}/>Ticket wurde automatisch erstellt</div>}
-        <div style={{background:'var(--bg)',borderRadius:8,padding:'12px 14px',fontFamily:'monospace',fontSize:12,maxHeight:320,overflow:'auto',whiteSpace:'pre-wrap',wordBreak:'break-word'}}>{sel.body?.slice(0,3000)}</div>
+        <HtmlView html={sel.body} maxHeight={480}/>
       </div>}
     </Modal>
   </div>;
