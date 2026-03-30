@@ -743,11 +743,13 @@ const ECheck=({label,fk,cfg,sCfg})=>(
   </label>
 );
 const EmailSettings=()=>{
-  const[cfg,sCfg]=useState({smtp_host:'',smtp_port:587,smtp_user:'',smtp_pass:'',smtp_secure:false,imap_host:'',imap_port:993,imap_user:'',imap_pass:'',from_name:'ServiceDesk Pro',from_email:'',notifications_enabled:true,auto_ticket_enabled:true,poll_interval:5});
+  const[cfg,sCfg]=useState({smtp_host:'',smtp_port:587,smtp_user:'',smtp_pass:'',smtp_secure:false,imap_host:'',imap_port:993,imap_user:'',imap_pass:'',from_name:'ServiceDesk Pro',from_email:'',notifications_enabled:true,auto_ticket_enabled:true,poll_interval:5,connection_type:'imap',ms_tenant_id:'',ms_client_id:'',ms_client_secret:'',ms_mailbox:''});
   const[msg,sMsg]=useState(null);const[testing,sTesting]=useState(false);
-  useEffect(()=>{api.get('/api/email/config').then(r=>{if(!r.error)sCfg(c=>({...c,...r,smtp_secure:r.smtp_secure===1,notifications_enabled:r.notifications_enabled===1,auto_ticket_enabled:r.auto_ticket_enabled===1,poll_interval:r.poll_interval||5}))})},[]);
+  useEffect(()=>{api.get('/api/email/config').then(r=>{if(!r.error)sCfg(c=>({...c,...r,smtp_secure:r.smtp_secure===1,notifications_enabled:r.notifications_enabled===1,auto_ticket_enabled:r.auto_ticket_enabled===1,poll_interval:r.poll_interval||5,connection_type:r.connection_type||'imap'}))})},[]);
   const save=async()=>{const r=await api.put('/api/email/config',cfg);if(r.success)sMsg({t:'s',m:'Einstellungen gespeichert'});else sMsg({t:'e',m:r.error})};
   const testSmtp=async()=>{sTesting(true);const r=await api.post('/api/email/test-smtp',{});sMsg(r.success?{t:'s',m:r.message}:{t:'e',m:r.error});sTesting(false)};
+  const testImap=async()=>{sTesting(true);const r=await api.post('/api/email/test-imap',{});sMsg(r.success?{t:'s',m:r.message}:{t:'e',m:r.error});sTesting(false)};
+  const testGraph=async()=>{sTesting(true);const r=await api.post('/api/email/test-graph',{});sMsg(r.success?{t:'s',m:r.message}:{t:'e',m:r.error});sTesting(false)};
   const fp={cfg,sCfg};
   return <div className="fade" style={{display:'flex',flexDirection:'column',gap:16}}>
     <div className="ph"><span className="pt">E-Mail Einstellungen</span><div className="flex gap-2"><button onClick={testSmtp} className="btn btn-tg btn-sm" disabled={testing}><I n="check" s={14}/>{testing?'Teste…':'SMTP testen'}</button><button onClick={save} className="btn btn-p btn-sm"><I n="check" s={14}/>Speichern</button></div></div>
@@ -775,14 +777,39 @@ const EmailSettings=()=>{
       </div>
     </div>
     <div className="sett-card">
-      <div className="sett-title">IMAP – Eingehende E-Mails</div>
-      <div className="sett-desc">E-Mails abrufen und automatisch Tickets erstellen</div>
-      <div className="g2">
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+        <div><div className="sett-title" style={{marginBottom:2}}>Eingehende E-Mails</div>
+        <div className="sett-desc">Verbindungstyp für den Posteingang wählen</div></div>
+        {cfg.connection_type==='graph'
+          ?<button onClick={testGraph} className="btn btn-tg btn-sm" disabled={testing}><I n="check" s={14}/>{testing?'Teste…':'M365 testen'}</button>
+          :<button onClick={testImap} className="btn btn-tg btn-sm" disabled={testing}><I n="check" s={14}/>{testing?'Teste…':'IMAP testen'}</button>}
+      </div>
+      <div style={{display:'flex',gap:0,borderRadius:8,overflow:'hidden',border:'1px solid var(--bd)',marginBottom:16,width:'fit-content'}}>
+        {[['imap','IMAP / POP3'],['graph','Microsoft 365']].map(([k,l])=>(
+          <button key={k} onClick={()=>sCfg(x=>({...x,connection_type:k}))} style={{padding:'7px 18px',background:cfg.connection_type===k?'var(--pt)':'transparent',color:cfg.connection_type===k?'#fff':'var(--tm)',border:'none',cursor:'pointer',fontSize:13,fontWeight:cfg.connection_type===k?600:400,transition:'all .15s'}}>{l}</button>
+        ))}
+      </div>
+      {cfg.connection_type==='imap'&&<div className="g2">
         <EField label="IMAP Host" fk="imap_host" placeholder="imap.gmail.com / outlook.office365.com" {...fp}/>
         <EField label="IMAP Port" fk="imap_port" type="number" {...fp}/>
         <EField label="Benutzername" fk="imap_user" {...fp}/>
-        <EField label="Passwort" fk="imap_pass" type="password" {...fp}/>
-      </div>
+        <EField label="Passwort" fk="imap_pass" type="password" placeholder="Passwort oder App-Passwort" {...fp}/>
+      </div>}
+      {cfg.connection_type==='graph'&&<div>
+        <div style={{background:'rgba(13,148,136,.07)',border:'1px solid rgba(13,148,136,.2)',borderRadius:10,padding:'12px 14px',marginBottom:16,fontSize:12,lineHeight:1.7}}>
+          <strong>Azure App Registration erforderlich:</strong><br/>
+          1. <a href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" style={{color:'var(--pt)'}}>portal.azure.com</a> → App-Registrierungen → Neue Registrierung<br/>
+          2. API-Berechtigungen → <strong>Mail.Read</strong> (Anwendungsberechtigung) hinzufügen<br/>
+          3. Administratorzustimmung erteilen<br/>
+          4. Zertifikate &amp; Geheimnisse → Neuen geheimen Clientschlüssel erstellen
+        </div>
+        <div className="g2">
+          <EField label="Mandanten-ID (Tenant ID)" fk="ms_tenant_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" {...fp}/>
+          <EField label="Anwendungs-ID (Client ID)" fk="ms_client_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" {...fp}/>
+          <EField label="Geheimer Clientschlüssel" fk="ms_client_secret" type="password" placeholder="Clientgeheimnis aus Azure" {...fp}/>
+          <EField label="Postfach (E-Mail-Adresse)" fk="ms_mailbox" placeholder="servicedesk@firma.onmicrosoft.com" {...fp}/>
+        </div>
+      </div>}
     </div>
     <div className="sett-card">
       <div className="sett-title">Verhalten</div>

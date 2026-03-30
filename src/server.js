@@ -42,6 +42,11 @@ db.exec(`
     notifications_enabled INTEGER DEFAULT 1,
     auto_ticket_enabled INTEGER DEFAULT 1,
     poll_interval INTEGER DEFAULT 5,
+    connection_type TEXT DEFAULT 'imap',
+    ms_tenant_id TEXT DEFAULT '',
+    ms_client_id TEXT DEFAULT '',
+    ms_client_secret TEXT DEFAULT '',
+    ms_mailbox TEXT DEFAULT '',
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
   INSERT OR IGNORE INTO email_config (id) VALUES (1);
@@ -181,17 +186,74 @@ async function pollImap() {
   }
 }
 
+// ===== MICROSOFT GRAPH API =====
+async function getGraphToken(cfg) {
+  const url = `https://login.microsoftonline.com/${cfg.ms_tenant_id}/oauth2/v2.0/token`;
+  const body = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: cfg.ms_client_id,
+    client_secret: cfg.ms_client_secret,
+    scope: 'https://graph.microsoft.com/.default'
+  });
+  const res = await fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error_description || data.error || 'Token-Fehler');
+  return data.access_token;
+}
+
+async function pollGraph() {
+  const cfg = getEmailConfig();
+  if (!cfg.auto_ticket_enabled || !cfg.ms_tenant_id || !cfg.ms_client_id || !cfg.ms_mailbox) return;
+  try {
+    const token = await getGraphToken(cfg);
+    const mailbox = encodeURIComponent(cfg.ms_mailbox);
+    const url = `https://graph.microsoft.com/v1.0/users/${mailbox}/mailFolders/inbox/messages?$filter=isRead eq false&$top=50&$select=id,subject,from,body,receivedDateTime,internetMessageId`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'Graph Fehler'); }
+    const data = await res.json();
+    for (const msg of (data.value || [])) {
+      const msgId = msg.internetMessageId || msg.id;
+      const exists = db.prepare('SELECT id FROM email_inbox WHERE message_id = ?').get(msgId);
+      if (exists) continue;
+      const fromEmail = msg.from?.emailAddress?.address || '';
+      const fromName = msg.from?.emailAddress?.name || fromEmail;
+      const subject = msg.subject || '(Kein Betreff)';
+      const body = msg.body?.content || '';
+      const received = msg.receivedDateTime || new Date().toISOString();
+      const result = db.prepare('INSERT INTO email_inbox (message_id, from_email, from_name, subject, body, received_at) VALUES (?,?,?,?,?,?)').run(msgId, fromEmail, fromName, subject, body, received);
+      // Mark as read
+      await fetch(`https://graph.microsoft.com/v1.0/users/${mailbox}/messages/${msg.id}`, {
+        method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isRead: true })
+      });
+      if (cfg.auto_ticket_enabled) {
+        const ticketNum = nextNumber('TK');
+        const tkResult = db.prepare(`INSERT INTO tickets (ticket_number, title, description, priority, category, requester_name, requester_email, requester_type, created_by) VALUES (?,?,?,?,?,?,?,?,1)`)
+          .run(ticketNum, subject.substring(0, 200), body.replace(/<[^>]*>/g, '').substring(0, 2000), 'medium', 'E-Mail', fromName || fromEmail, fromEmail, 'external');
+        db.prepare('UPDATE email_inbox SET ticket_id = ?, processed = 1 WHERE id = ?').run(tkResult.lastInsertRowid, result.lastInsertRowid);
+        console.log(`📧 [Graph] Ticket ${ticketNum} aus E-Mail: ${subject}`);
+      }
+    }
+  } catch (err) { console.error('Graph Fehler:', err.message); }
+}
+
+async function pollMail() {
+  const cfg = getEmailConfig();
+  if (cfg && cfg.connection_type === 'graph') return pollGraph();
+  return pollImap();
+}
+
 // Dynamisches Poll-Intervall (konfigurierbar)
 let _pollTimer = null;
 function startPollTimer() {
   if (_pollTimer) clearInterval(_pollTimer);
   const cfg = getEmailConfig();
   const minutes = cfg ? (parseInt(cfg.poll_interval) || 5) : 5;
-  _pollTimer = setInterval(pollImap, minutes * 60 * 1000);
+  _pollTimer = setInterval(pollMail, minutes * 60 * 1000);
   console.log(`[IMAP] Polling alle ${minutes} Minuten`);
 }
 startPollTimer();
-setTimeout(pollImap, 5000); // Beim Start
+setTimeout(pollMail, 5000); // Beim Start
 
 // ===== AUTH ROUTES =====
 app.post('/api/auth/login', (req, res) => {
@@ -453,26 +515,36 @@ app.get('/api/users/agents', auth, (req, res) => {
 // ===== EMAIL CONFIG =====
 app.get('/api/email/config', auth, adminOnly, (req, res) => {
   const cfg = getEmailConfig();
-  if (cfg) { cfg.smtp_pass = cfg.smtp_pass ? '••••••••' : ''; cfg.imap_pass = cfg.imap_pass ? '••••••••' : ''; }
+  if (cfg) { cfg.smtp_pass = cfg.smtp_pass ? '••••••••' : ''; cfg.imap_pass = cfg.imap_pass ? '••••••••' : ''; cfg.ms_client_secret = cfg.ms_client_secret ? '••••••••' : ''; }
   res.json(cfg || {});
 });
 
 app.put('/api/email/config', auth, adminOnly, (req, res) => {
-  const { smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, imap_host, imap_port, imap_user, imap_pass, from_name, from_email, notifications_enabled, auto_ticket_enabled, poll_interval } = req.body;
+  const { smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, imap_host, imap_port, imap_user, imap_pass, from_name, from_email, notifications_enabled, auto_ticket_enabled, poll_interval, connection_type, ms_tenant_id, ms_client_id, ms_client_secret, ms_mailbox } = req.body;
   const current = getEmailConfig();
   // Add column if missing (migration)
   try { db.exec('ALTER TABLE email_config ADD COLUMN poll_interval INTEGER DEFAULT 5'); } catch(e) {}
+  try { db.exec("ALTER TABLE email_config ADD COLUMN connection_type TEXT DEFAULT 'imap'"); } catch(e) {}
+  try { db.exec("ALTER TABLE email_config ADD COLUMN ms_tenant_id TEXT DEFAULT ''"); } catch(e) {}
+  try { db.exec("ALTER TABLE email_config ADD COLUMN ms_client_id TEXT DEFAULT ''"); } catch(e) {}
+  try { db.exec("ALTER TABLE email_config ADD COLUMN ms_client_secret TEXT DEFAULT ''"); } catch(e) {}
+  try { db.exec("ALTER TABLE email_config ADD COLUMN ms_mailbox TEXT DEFAULT ''"); } catch(e) {}
   db.prepare(`UPDATE email_config SET
     smtp_host=?, smtp_port=?, smtp_user=?, smtp_pass=?, smtp_secure=?,
     imap_host=?, imap_port=?, imap_user=?, imap_pass=?,
     from_name=?, from_email=?, notifications_enabled=?, auto_ticket_enabled=?,
-    poll_interval=?, updated_at=CURRENT_TIMESTAMP WHERE id=1`)
+    poll_interval=?, connection_type=?,
+    ms_tenant_id=?, ms_client_id=?, ms_client_secret=?, ms_mailbox=?,
+    updated_at=CURRENT_TIMESTAMP WHERE id=1`)
     .run(smtp_host || '', smtp_port || 587, smtp_user || '',
       smtp_pass && smtp_pass !== '••••••••' ? smtp_pass : (current.smtp_pass || ''), smtp_secure ? 1 : 0,
       imap_host || '', imap_port || 993, imap_user || '',
       imap_pass && imap_pass !== '••••••••' ? imap_pass : (current.imap_pass || ''),
       from_name || 'ServiceDesk Pro', from_email || '', notifications_enabled ? 1 : 0, auto_ticket_enabled ? 1 : 0,
-      parseInt(poll_interval) || 5);
+      parseInt(poll_interval) || 5, connection_type || 'imap',
+      ms_tenant_id || '', ms_client_id || '',
+      ms_client_secret && ms_client_secret !== '••••••••' ? ms_client_secret : (current.ms_client_secret || ''),
+      ms_mailbox || '');
   startPollTimer(); // Intervall neu starten mit neuen Einstellungen
   res.json({ success: true });
 });
@@ -486,8 +558,34 @@ app.post('/api/email/test-smtp', auth, adminOnly, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+app.post('/api/email/test-imap', auth, adminOnly, async (req, res) => {
+  const cfg = getEmailConfig();
+  if (!cfg.imap_host || !cfg.imap_user) return res.status(400).json({ error: 'IMAP nicht konfiguriert' });
+  const { ImapFlow } = require('imapflow');
+  const client = new ImapFlow({ host: cfg.imap_host, port: cfg.imap_port || 993, secure: true, auth: { user: cfg.imap_user, pass: cfg.imap_pass }, logger: false });
+  try {
+    await client.connect();
+    const status = await client.status('INBOX', { messages: true, unseen: true });
+    await client.logout();
+    res.json({ success: true, message: `IMAP verbunden – ${status.messages} E-Mails, ${status.unseen} ungelesen` });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+app.post('/api/email/test-graph', auth, adminOnly, async (req, res) => {
+  const cfg = getEmailConfig();
+  if (!cfg.ms_tenant_id || !cfg.ms_client_id || !cfg.ms_mailbox) return res.status(400).json({ error: 'Microsoft 365 nicht vollständig konfiguriert' });
+  try {
+    const token = await getGraphToken(cfg);
+    const mailbox = encodeURIComponent(cfg.ms_mailbox);
+    const r = await fetch(`https://graph.microsoft.com/v1.0/users/${mailbox}/mailFolders/inbox`, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error?.message || 'Graph Fehler');
+    res.json({ success: true, message: `Microsoft 365 verbunden – Posteingang: ${data.totalItemCount || 0} E-Mails, ${data.unreadItemCount || 0} ungelesen` });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
 app.post('/api/email/poll', auth, adminOnly, async (req, res) => {
-  try { await pollImap(); res.json({ success: true, message: 'Postfach abgerufen' }); }
+  try { await pollMail(); res.json({ success: true, message: 'Postfach abgerufen' }); }
   catch (err) { res.status(400).json({ error: err.message }); }
 });
 
