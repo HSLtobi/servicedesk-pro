@@ -41,6 +41,7 @@ db.exec(`
     from_email TEXT DEFAULT '',
     notifications_enabled INTEGER DEFAULT 1,
     auto_ticket_enabled INTEGER DEFAULT 1,
+    poll_interval INTEGER DEFAULT 5,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
   INSERT OR IGNORE INTO email_config (id) VALUES (1);
@@ -180,8 +181,16 @@ async function pollImap() {
   }
 }
 
-// Alle 5 Minuten E-Mails abrufen
-setInterval(pollImap, 5 * 60 * 1000);
+// Dynamisches Poll-Intervall (konfigurierbar)
+let _pollTimer = null;
+function startPollTimer() {
+  if (_pollTimer) clearInterval(_pollTimer);
+  const cfg = getEmailConfig();
+  const minutes = cfg ? (parseInt(cfg.poll_interval) || 5) : 5;
+  _pollTimer = setInterval(pollImap, minutes * 60 * 1000);
+  console.log(`[IMAP] Polling alle ${minutes} Minuten`);
+}
+startPollTimer();
 setTimeout(pollImap, 5000); // Beim Start
 
 // ===== AUTH ROUTES =====
@@ -449,18 +458,22 @@ app.get('/api/email/config', auth, adminOnly, (req, res) => {
 });
 
 app.put('/api/email/config', auth, adminOnly, (req, res) => {
-  const { smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, imap_host, imap_port, imap_user, imap_pass, from_name, from_email, notifications_enabled, auto_ticket_enabled } = req.body;
+  const { smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, imap_host, imap_port, imap_user, imap_pass, from_name, from_email, notifications_enabled, auto_ticket_enabled, poll_interval } = req.body;
   const current = getEmailConfig();
+  // Add column if missing (migration)
+  try { db.exec('ALTER TABLE email_config ADD COLUMN poll_interval INTEGER DEFAULT 5'); } catch(e) {}
   db.prepare(`UPDATE email_config SET
     smtp_host=?, smtp_port=?, smtp_user=?, smtp_pass=?, smtp_secure=?,
     imap_host=?, imap_port=?, imap_user=?, imap_pass=?,
     from_name=?, from_email=?, notifications_enabled=?, auto_ticket_enabled=?,
-    updated_at=CURRENT_TIMESTAMP WHERE id=1`)
+    poll_interval=?, updated_at=CURRENT_TIMESTAMP WHERE id=1`)
     .run(smtp_host || '', smtp_port || 587, smtp_user || '',
       smtp_pass && smtp_pass !== '••••••••' ? smtp_pass : (current.smtp_pass || ''), smtp_secure ? 1 : 0,
       imap_host || '', imap_port || 993, imap_user || '',
       imap_pass && imap_pass !== '••••••••' ? imap_pass : (current.imap_pass || ''),
-      from_name || 'ServiceDesk Pro', from_email || '', notifications_enabled ? 1 : 0, auto_ticket_enabled ? 1 : 0);
+      from_name || 'ServiceDesk Pro', from_email || '', notifications_enabled ? 1 : 0, auto_ticket_enabled ? 1 : 0,
+      parseInt(poll_interval) || 5);
+  startPollTimer(); // Intervall neu starten mit neuen Einstellungen
   res.json({ success: true });
 });
 

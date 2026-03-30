@@ -743,9 +743,9 @@ const ECheck=({label,fk,cfg,sCfg})=>(
   </label>
 );
 const EmailSettings=()=>{
-  const[cfg,sCfg]=useState({smtp_host:'',smtp_port:587,smtp_user:'',smtp_pass:'',smtp_secure:false,imap_host:'',imap_port:993,imap_user:'',imap_pass:'',from_name:'ServiceDesk Pro',from_email:'',notifications_enabled:true,auto_ticket_enabled:true});
+  const[cfg,sCfg]=useState({smtp_host:'',smtp_port:587,smtp_user:'',smtp_pass:'',smtp_secure:false,imap_host:'',imap_port:993,imap_user:'',imap_pass:'',from_name:'ServiceDesk Pro',from_email:'',notifications_enabled:true,auto_ticket_enabled:true,poll_interval:5});
   const[msg,sMsg]=useState(null);const[testing,sTesting]=useState(false);
-  useEffect(()=>{api.get('/api/email/config').then(r=>{if(!r.error)sCfg(c=>({...c,...r,smtp_secure:r.smtp_secure===1,notifications_enabled:r.notifications_enabled===1,auto_ticket_enabled:r.auto_ticket_enabled===1}))})},[]);
+  useEffect(()=>{api.get('/api/email/config').then(r=>{if(!r.error)sCfg(c=>({...c,...r,smtp_secure:r.smtp_secure===1,notifications_enabled:r.notifications_enabled===1,auto_ticket_enabled:r.auto_ticket_enabled===1,poll_interval:r.poll_interval||5}))})},[]);
   const save=async()=>{const r=await api.put('/api/email/config',cfg);if(r.success)sMsg({t:'s',m:'Einstellungen gespeichert'});else sMsg({t:'e',m:r.error})};
   const testSmtp=async()=>{sTesting(true);const r=await api.post('/api/email/test-smtp',{});sMsg(r.success?{t:'s',m:r.message}:{t:'e',m:r.error});sTesting(false)};
   const fp={cfg,sCfg};
@@ -786,9 +786,22 @@ const EmailSettings=()=>{
     </div>
     <div className="sett-card">
       <div className="sett-title">Verhalten</div>
-      <div style={{display:'flex',flexDirection:'column',gap:10,marginTop:8}}>
+      <div style={{display:'flex',flexDirection:'column',gap:12,marginTop:8}}>
         <ECheck label="E-Mail-Benachrichtigungen senden (bei Ticket-Erstellung und Status-Änderungen)" fk="notifications_enabled" {...fp}/>
         <ECheck label="Automatisch Ticket erstellen wenn E-Mail eingeht" fk="auto_ticket_enabled" {...fp}/>
+        <div className="form-group" style={{marginTop:4}}>
+          <label className="lbl">Abruf-Intervall (IMAP Polling)</label>
+          <select className="inp" style={{maxWidth:260}} value={cfg.poll_interval||5} onChange={e=>sCfg(c=>({...c,poll_interval:parseInt(e.target.value)}))}>
+            <option value={1}>Jede Minute</option>
+            <option value={2}>Alle 2 Minuten</option>
+            <option value={5}>Alle 5 Minuten</option>
+            <option value={10}>Alle 10 Minuten</option>
+            <option value={15}>Alle 15 Minuten</option>
+            <option value={30}>Alle 30 Minuten</option>
+            <option value={60}>Stündlich</option>
+          </select>
+          <div className="text-xs text-muted" style={{marginTop:4}}>Wie oft der Posteingang automatisch auf neue E-Mails geprüft wird</div>
+        </div>
       </div>
     </div>
   </div>;
