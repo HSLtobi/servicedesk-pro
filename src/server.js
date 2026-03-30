@@ -148,40 +148,61 @@ async function sendMail(to, subject, html, ticketId = null) {
 
 
 // ===== MIME BODY EXTRACTOR =====
+function decodePart(body, headers) {
+  const isQP = headers.includes('quoted-printable');
+  const isB64 = headers.includes('base64');
+  if (isQP) return decodeQP(body);
+  if (isB64) { try { return Buffer.from(body.replace(/\s/g,''),'base64').toString('utf-8'); } catch(e) {} }
+  return body;
+}
+
 function extractBody(source) {
   const raw = source.toString();
   const boundaryMatch = raw.match(/boundary="?([^"\r\n;]+)"?/i);
   if (!boundaryMatch) {
-    // Simple non-multipart email
     const headerEnd = raw.indexOf('\r\n\r\n');
     if (headerEnd === -1) return raw.slice(0, 3000);
+    const hdrs = raw.slice(0, headerEnd).toLowerCase();
     const body = raw.slice(headerEnd + 4);
-    const isQP = /content-transfer-encoding:\s*quoted-printable/i.test(raw.slice(0, headerEnd));
-    const isB64 = /content-transfer-encoding:\s*base64/i.test(raw.slice(0, headerEnd));
-    if (isQP) return decodeQP(body);
-    if (isB64) { try { return Buffer.from(body.replace(/\s/g,''),'base64').toString('utf-8'); } catch(e) {} }
-    return body.slice(0, 5000);
+    return decodePart(body, hdrs).slice(0, 8000);
   }
   const boundary = '--' + boundaryMatch[1].trim();
   const parts = raw.split(boundary);
   let html = '', text = '';
+  // Map of CID -> base64 data URI for inline images
+  const cidMap = {};
+
   for (const part of parts) {
     if (!part || part === '--' || part.trim() === '--') continue;
     const headerEnd = part.indexOf('\r\n\r\n');
     if (headerEnd === -1) continue;
-    const headers = part.slice(0, headerEnd).toLowerCase();
+    const rawHeaders = part.slice(0, headerEnd);
+    const headers = rawHeaders.toLowerCase();
     let body = part.slice(headerEnd + 4);
     if (body.endsWith('\r\n')) body = body.slice(0, -2);
-    const isQP = headers.includes('quoted-printable');
-    const isB64 = headers.includes('base64');
-    if (isQP) body = decodeQP(body);
-    else if (isB64) { try { body = Buffer.from(body.replace(/\s/g,''),'base64').toString('utf-8'); } catch(e) {} }
-    if (headers.includes('text/html') && !html) html = body;
-    else if (headers.includes('text/plain') && !text) text = body;
+
+    // Extract inline images with Content-ID
+    const cidMatch = rawHeaders.match(/Content-ID:\s*<([^>]+)>/i);
+    const ctMatch = rawHeaders.match(/Content-Type:\s*([^;\r\n]+)/i);
+    if (cidMatch && ctMatch && headers.includes('base64')) {
+      const cid = cidMatch[1].trim();
+      const mime = ctMatch[1].trim();
+      const b64 = body.replace(/\s/g, '');
+      cidMap[cid] = `data:${mime};base64,${b64}`;
+      continue;
+    }
+
+    const decoded = decodePart(body, headers);
+    if (headers.includes('text/html') && !html) html = decoded;
+    else if (headers.includes('text/plain') && !text) text = decoded;
   }
-  if (html) return html;
-  if (text) return text.replace(/\n/g, '<br>');
-  return raw.slice(0, 3000);
+
+  // Replace cid: references with data URIs
+  let result = html || (text ? text.replace(/\n/g, '<br>') : raw.slice(0, 3000));
+  for (const [cid, dataUri] of Object.entries(cidMap)) {
+    result = result.split(`cid:${cid}`).join(dataUri);
+  }
+  return result.slice(0, 65536); // 64KB limit
 }
 function decodeQP(s) {
   return s.replace(/=\r\n/g,'').replace(/=([0-9A-Fa-f]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));

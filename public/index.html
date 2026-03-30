@@ -718,7 +718,7 @@ const HtmlView=({html,maxHeight})=>{
   },[html,mh]);
   React.useEffect(write,[write]);
   if(!isH)return <div style={{background:'var(--bg)',borderRadius:8,padding:'10px 12px',fontSize:13,lineHeight:1.6,whiteSpace:'pre-wrap',wordBreak:'break-word',maxHeight:mh,overflowY:'auto'}}>{html}</div>;
-  return <iframe ref={ref} onLoad={write} sandbox="allow-same-origin" style={{width:'100%',border:'none',borderRadius:8,background:'var(--bg)',minHeight:80,maxHeight:mh,display:'block'}} title="html-view"/>;
+  return <iframe ref={ref} onLoad={write} referrerPolicy="no-referrer" style={{width:'100%',border:'none',borderRadius:8,background:'var(--bg)',minHeight:80,maxHeight:mh,display:'block'}} title="html-view"/>;
 };
 
 
