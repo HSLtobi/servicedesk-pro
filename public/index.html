@@ -757,13 +757,22 @@ const EmailSettings=()=>{
       <div className="sett-desc">Für Benachrichtigungen und Antworten aus Tickets</div>
       <div className="g2">
         <EField label="SMTP Host" fk="smtp_host" placeholder="smtp.gmail.com" {...fp}/>
-        <EField label="SMTP Port" fk="smtp_port" type="number" {...fp}/>
+        <div className="form-group">
+          <label className="lbl">SMTP Port</label>
+          <select className="inp" value={cfg.smtp_port} onChange={e=>sCfg(c=>({...c,smtp_port:parseInt(e.target.value)}))}>
+            <option value={587}>587 – STARTTLS (empfohlen)</option>
+            <option value={465}>465 – SSL/TLS</option>
+            <option value={25}>25 – Kein TLS</option>
+          </select>
+        </div>
         <EField label="Benutzername" fk="smtp_user" placeholder="user@gmail.com" {...fp}/>
         <EField label="Passwort" fk="smtp_pass" type="password" placeholder="App-Passwort" {...fp}/>
         <EField label="Absender Name" fk="from_name" {...fp}/>
         <EField label="Absender E-Mail" fk="from_email" placeholder="servicedesk@example.com" {...fp}/>
       </div>
-      <div className="mt-3"><ECheck label="SSL/TLS verwenden" fk="smtp_secure" {...fp}/></div>
+      <div className="text-xs text-muted mt-2" style={{marginTop:6}}>
+        Port 587 = STARTTLS (Gmail, Office 365) · Port 465 = direktes SSL · Verschlüsselung wird automatisch je nach Port gewählt
+      </div>
     </div>
     <div className="sett-card">
       <div className="sett-title">IMAP – Eingehende E-Mails</div>

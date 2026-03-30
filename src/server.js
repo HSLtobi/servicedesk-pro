@@ -113,11 +113,16 @@ function getEmailConfig() {
 async function createTransport() {
   const cfg = getEmailConfig();
   if (!cfg.smtp_host || !cfg.smtp_user) return null;
+  const port = parseInt(cfg.smtp_port) || 587;
+  // Port 465 = direktes SSL/TLS, Port 587/25 = STARTTLS
+  const secure = port === 465;
   return nodemailer.createTransport({
     host: cfg.smtp_host,
-    port: cfg.smtp_port,
-    secure: cfg.smtp_secure === 1,
-    auth: { user: cfg.smtp_user, pass: cfg.smtp_pass }
+    port: port,
+    secure: secure,
+    ...(port === 587 ? { requireTLS: true } : {}),
+    auth: { user: cfg.smtp_user, pass: cfg.smtp_pass },
+    tls: { rejectUnauthorized: false }
   });
 }
 
