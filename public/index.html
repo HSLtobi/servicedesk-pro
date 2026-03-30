@@ -252,11 +252,15 @@ const SBadge=({s})=>{const m={open:{l:'Offen',v:'bp'},inProgress:{l:'In Bearb.',
 const PBadge=({p})=>{const m={critical:{l:'Kritisch',v:'br'},high:{l:'Hoch',v:'bw'},medium:{l:'Mittel',v:'bi'},low:{l:'Niedrig',v:'bs'}};const x=m[p]||{l:p,v:'bd'};return<Badge label={x.l} v={x.v}/>};
 
 // ===== KPI =====
-const KPI=({icon,label,value,trend,up,color,textColor='text-white'})=>(
-  <div className="kpi">
+const KPI=({icon,label,value,trend,up,color,onClick})=>(
+  <div className="kpi" onClick={onClick}
+    style={onClick?{cursor:'pointer',transition:'box-shadow .15s,transform .15s'}:undefined}
+    onMouseEnter={onClick?e=>{e.currentTarget.style.boxShadow='0 4px 18px rgba(0,0,0,.10)';e.currentTarget.style.transform='translateY(-2px)'}:undefined}
+    onMouseLeave={onClick?e=>{e.currentTarget.style.boxShadow='';e.currentTarget.style.transform=''}:undefined}>
     <div className="flex items-center justify-between">
       <div className="kpi-ico" style={{background:color+'22'}}><I n={icon} s={20} c="" style={{color}}/></div>
       {trend&&<span className={`kpi-trend ${up?'trend-up':'trend-dn'}`}><I n={up?'arrowUp':'arrowDown'} s={12}/>{trend}</span>}
+      {onClick&&!trend&&<I n="chevR" s={13} c="text-muted"/>}
     </div>
     <div className="kpi-val">{value}</div>
     <div className="kpi-lbl">{label}</div>
@@ -332,10 +336,10 @@ const Dash=({user,onNav,stats})=>{
       <button onClick={()=>onNav('tickets')} className="btn" style={{background:'rgba(255,255,255,.15)',color:'#fff',backdropFilter:'blur(4px)'}}><I n="plus" s={15}/>Neues Ticket</button>
     </div>
     <div className="g4">
-      <KPI icon="ticket" label="Offene Tickets" value={data.openTickets} trend="+12%" up={false} color="#3b82f6"/>
-      <KPI icon="check" label="Heute gelöst" value={data.resolvedToday} trend="+25%" up={true} color="#10b981"/>
-      <KPI icon="alert" label="Aktive Vorfälle" value={data.activeIncidents} color="#ef4444"/>
-      <KPI icon="mail" label="Ungelesene Mails" value={data.unreadEmails||0} color="#0d9488"/>
+      <KPI icon="ticket" label="Offene Tickets" value={data.openTickets} trend="+12%" up={false} color="#3b82f6" onClick={()=>onNav('tickets','open')}/>
+      <KPI icon="check" label="Heute gelöst" value={data.resolvedToday} trend="+25%" up={true} color="#10b981" onClick={()=>onNav('tickets','resolved')}/>
+      <KPI icon="alert" label="Aktive Vorfälle" value={data.activeIncidents} color="#ef4444" onClick={()=>onNav('incidents')}/>
+      <KPI icon="mail" label="Ungelesene Mails" value={data.unreadEmails||0} color="#0d9488" onClick={()=>onNav('emailInbox')}/>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'1.6fr 1fr',gap:16}}>
       <div className="card card-p">
@@ -355,7 +359,7 @@ const Dash=({user,onNav,stats})=>{
       <div className="overflow-x-auto">
         <table><thead><tr><th>Nummer</th><th>Titel</th><th>Status</th><th>Priorität</th><th>Erstellt</th></tr></thead>
           <tbody>{(data.recentTickets||[]).slice(0,6).map(t=>(
-            <tr key={t.id} onClick={()=>onNav('tickets')}>
+            <tr key={t.id} onClick={()=>onNav('tickets',null,t.id)} style={{cursor:'pointer'}}>
               <td><span className="font-mono text-xs text-muted">{t.ticket_number}</span></td>
               <td><span className="font-medium" style={{fontSize:13}}>{t.title}</span></td>
               <td><SBadge s={t.status}/></td>
@@ -369,13 +373,18 @@ const Dash=({user,onNav,stats})=>{
 };
 
 // ===== TICKETS =====
-const Tickets=({user})=>{
+const Tickets=({user,initFilter,initTicketId,onClearFilter})=>{
   const[items,sItems]=useState([]);const[total,sTotal]=useState(0);const[loading,sL]=useState(true);
   const[fS,sFt]=useState('all');const[fP,sFP]=useState('all');const[sq,sSQ]=useState('');
   const[sel,sSel]=useState(null);const[newM,sNewM]=useState(false);const[agents,sAgents]=useState([]);
   useEffect(()=>{api.get('/api/users/agents').then(sAgents)},[]);
   const load=()=>{sL(true);let q=`/api/tickets?limit=50&status=${fS}&priority=${fP}`;if(sq)q+=`&search=${encodeURIComponent(sq)}`;api.get(q).then(r=>{sItems(r.data||[]);sTotal(r.total||0);sL(false)})};
   useEffect(()=>{load()},[fS,fP,sq]);
+  useEffect(()=>{if(initFilter)sFt(initFilter);},[initFilter]);
+  useEffect(()=>{
+    if(!initTicketId)return;
+    api.get(`/api/tickets/${initTicketId}`).then(d=>{sSel(d);onClearFilter&&onClearFilter();});
+  },[initTicketId]);
   const openTicket=async(t)=>{const d=await api.get(`/api/tickets/${t.id}`);sSel(d)};
   const csv=()=>{const h='Nummer,Titel,Status,Priorität,Erstellt\n';const r=items.map(t=>[t.ticket_number,`"${t.title}"`,t.status,t.priority,t.created_at?.slice(0,10)].join(',')).join('\n');const b=new Blob([h+r],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='tickets.csv';a.click()};
   return <div className="fade" style={{display:'flex',flexDirection:'column',gap:16}}>
@@ -1020,7 +1029,9 @@ const Profile=({user,onClose,onUpdate})=>{
 function App(){
   const[user,sUser]=useState(null);const[loading,sLoading]=useState(true);const[mod,sMod]=useState('dashboard');const[sb,sSB]=useState(true);const[showProfile,sShowProfile]=useState(false);
   useEffect(()=>{const t=localStorage.getItem('sd_tok');if(t){api.get('/api/auth/me').then(u=>{if(u&&u.id)sUser(u);sLoading(false)}).catch(()=>sLoading(false))}else{sLoading(false)}},[]);
-  const logout=()=>{localStorage.removeItem('sd_tok');sUser(null);sMod('dashboard')};
+  const logout=()=>{localStorage.removeItem('sd_tok');sUser(null);sMod('dashboard');};
+  const[navFilter,sNavFilter]=useState(null);const[navTicketId,sNavTicketId]=useState(null);
+  const onNav=(module,filter=null,ticketId=null)=>{sMod(module);sNavFilter(filter);sNavTicketId(ticketId);};
   if(loading)return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)'}}><div className="text-muted">Wird geladen…</div></div>;
   if(!user)return <Login onLogin={u=>{sUser(u);sMod('dashboard')}}/>;
 
@@ -1033,12 +1044,12 @@ function App(){
 
   const view=()=>{
     switch(mod){
-      case 'dashboard': return <Dash user={user} onNav={sMod} stats={{}}/>;
-      case 'tickets': return <Tickets user={user}/>;
+      case 'dashboard': return <Dash user={user} onNav={onNav} stats={{}}/>;
+      case 'tickets': return <Tickets user={user} initFilter={navFilter} initTicketId={navTicketId} onClearFilter={()=>sNavTicketId(null)}/>;
       case 'incidents': return <Incidents/>;
       case 'changes': return <Changes/>;
       case 'assets': return <Assets/>;
-      case 'selfService': return <SelfService onNav={sMod}/>;
+      case 'selfService': return <SelfService onNav={onNav}/>;
       case 'reporting': return <Reporting/>;
       case 'emailInbox': return <EmailInbox/>;
       case 'emailSettings': return <EmailSettings/>;
@@ -1058,7 +1069,7 @@ function App(){
         {nav.map((section,si)=><Fragment key={si}>
           {sb&&<div className="sb-section">{section.section}</div>}
           {section.items.map(it=>(
-            <button key={it.k} onClick={()=>sMod(it.k)} title={!sb?it.l:undefined} className={`nav-item ${mod===it.k?'active':''}`}>
+            <button key={it.k} onClick={()=>onNav(it.k)} title={!sb?it.l:undefined} className={`nav-item ${mod===it.k?'active':''}`}>
               <I n={it.ic} s={16} c="nav-icon"/>
               {sb&&<span className="nav-label">{it.l}</span>}
             </button>))}
