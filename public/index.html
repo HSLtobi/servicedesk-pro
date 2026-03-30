@@ -427,11 +427,11 @@ const Tickets=({user,initFilter,initTicketId,onClearFilter})=>{
 
 const TicketDetail=({ticket,onClose,agents,onUpdate,user})=>{
   const[comment,sComment]=useState('');const[internal,sInternal]=useState(false);
-  const[emailTo,sEmailTo]=useState('');const[emailBody,sEmailBody]=useState('');const[emailTab,sEmailTab]=useState('comment');
+  const[emailTo,sEmailTo]=useState('');const[emailBody,sEmailBody]=useState('');const[emailTab,sEmailTab]=useState('history');
   const[sending,sSending]=useState(false);
   if(!ticket)return null;
-  const addComment=async()=>{if(!comment.trim())return;await api.post(`/api/tickets/${ticket.id}/comments`,{content:comment,is_internal:internal});sComment('');const updated=await api.get(`/api/tickets/${ticket.id}`);onUpdate(updated)};
-  const sendEmail=async()=>{if(!emailTo||!emailBody)return;sSending(true);await api.post(`/api/tickets/${ticket.id}/send-email`,{to:emailTo,body:emailBody});sEmailBody('');sSending(false);const updated=await api.get(`/api/tickets/${ticket.id}`);onUpdate(updated)};
+  const addComment=async()=>{if(!comment.trim())return;await api.post(`/api/tickets/${ticket.id}/comments`,{content:comment,is_internal:internal});sComment('');sEmailTab('history');const updated=await api.get(`/api/tickets/${ticket.id}`);onUpdate(updated)};
+  const sendEmail=async()=>{if(!emailTo||!emailBody)return;sSending(true);await api.post(`/api/tickets/${ticket.id}/send-email`,{to:emailTo,body:emailBody});sEmailBody('');sSending(false);sEmailTab('history');const updated=await api.get(`/api/tickets/${ticket.id}`);onUpdate(updated)};
   const changeStatus=async(s)=>{const updated=await api.put(`/api/tickets/${ticket.id}`,{status:s});onUpdate(updated)};
   return <Modal open={true} onClose={onClose} lg={true} title={ticket.ticket_number}>
     <div style={{display:'flex',flexDirection:'column',gap:18}}>
@@ -451,11 +451,46 @@ const TicketDetail=({ticket,onClose,agents,onUpdate,user})=>{
       </div>
       <div>
         <div className="tabs">
+          <button className={`tab ${emailTab==='history'?'active':''}`} onClick={()=>sEmailTab('history')}><I n="clock" s={13}/>Verlauf ({(ticket.comments||[]).length+(ticket.emails||[]).length})</button>
           <button className={`tab ${emailTab==='comment'?'active':''}`} onClick={()=>sEmailTab('comment')}><I n="clip" s={13}/>Kommentar</button>
           <button className={`tab ${emailTab==='email'?'active':''}`} onClick={()=>sEmailTab('email')}><I n="reply" s={13}/>E-Mail senden</button>
-          <button className={`tab ${emailTab==='history'?'active':''}`} onClick={()=>sEmailTab('history')}><I n="clock" s={13}/>Verlauf</button>
-          <button className={`tab ${emailTab==='emails'?'active':''}`} onClick={()=>sEmailTab('emails')}><I n="mail" s={13}/>Mails ({(ticket.emails||[]).length})</button>
         </div>
+        {emailTab==='history'&&(()=>{
+          const timeline=[
+            ...(ticket.comments||[]).map(x=>({...x,_type:'comment',_ts:x.created_at})),
+            ...(ticket.emails||[]).map(x=>({...x,_type:'email',_ts:x.sent_at||x.received_at}))
+          ].sort((a,b)=>new Date(a._ts)-new Date(b._ts));
+          return <div style={{display:'flex',flexDirection:'column',gap:0}}>
+            {timeline.length===0&&<div className="text-muted text-sm" style={{padding:24,textAlign:'center'}}>Noch keine Aktivität</div>}
+            {timeline.map((item,i)=>{
+              const isEmail=item._type==='email';
+              const isSent=isEmail&&item.direction==='sent';
+              const isInternal=!isEmail&&item.is_internal;
+              const isIncoming=isEmail&&!isSent;
+              let bg='var(--bg)',border='var(--bd)',icon='clip',iconColor='#64748b',label='';
+              if(isInternal){bg='#fffbeb';border='#fde68a';icon='lock';iconColor='#d97706';label='Intern';}
+              else if(isSent){bg='#eff6ff';border='#bfdbfe';icon='send';iconColor='#3b82f6';label='E-Mail gesendet';}
+              else if(isIncoming){bg='#f0fdf4';border='#bbf7d0';icon='mail';iconColor='#16a34a';label='E-Mail empfangen';}
+              else{bg='var(--bg)';border='var(--bd)';icon='clip';iconColor='#0d9488';label='Kommentar';}
+              return <div key={i} style={{display:'flex',gap:12,padding:'14px 0',borderBottom:i<timeline.length-1?'1px solid var(--bd)':'none'}}>
+                <div style={{flexShrink:0,width:32,height:32,borderRadius:'50%',background:bg,border:`1px solid ${border}`,display:'flex',alignItems:'center',justifyContent:'center',marginTop:2}}>
+                  <I n={icon} s={14} c="" style={{color:iconColor}}/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-xs font-semibold">
+                      {isEmail?(isSent?`→ ${item.to_email}`:`← ${item.from_email||item.from_name}`):(item.user_name||'System')}
+                    </span>
+                    <Badge label={label} v="bt" style={{fontSize:10,padding:'1px 6px'}}/>
+                    <span className="text-xs text-muted" style={{marginLeft:'auto'}}>{item._ts?.slice(0,16)}</span>
+                  </div>
+                  {isEmail&&item.subject&&<div className="text-xs text-muted mb-1" style={{fontStyle:'italic'}}>{item.subject}</div>}
+                  <HtmlView html={isEmail?item.body:item.content} maxHeight={320}/>
+                </div>
+              </div>;
+            })}
+          </div>;
+        })()}
         {emailTab==='comment'&&<div style={{display:'flex',flexDirection:'column',gap:10}}>
           <textarea className="inp" rows={3} placeholder="Kommentar hinzufügen…" value={comment} onChange={e=>sComment(e.target.value)}/>
           <div className="flex items-center justify-between">
@@ -479,27 +514,6 @@ const TicketDetail=({ticket,onClose,agents,onUpdate,user})=>{
             {emailBody&&<details style={{marginTop:6}}><summary className="text-xs text-muted" style={{cursor:'pointer'}}>Vorschau anzeigen</summary><div style={{marginTop:4}}><HtmlView html={emailBody} maxHeight={180}/></div></details>}
           </div>
           <div className="flex justify-end"><button onClick={sendEmail} className="btn btn-p btn-sm" disabled={!emailTo||!emailBody||sending}><I n="send" s={13}/>{sending?'Wird gesendet…':'E-Mail senden'}</button></div>
-        </div>}
-        {emailTab==='history'&&<div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {(ticket.comments||[]).length===0?<div className="text-muted text-sm" style={{padding:16,textAlign:'center'}}>Keine Kommentare</div>:(ticket.comments||[]).map((c,i)=>(
-            <div key={i} style={{background:c.is_internal?'#fffbeb':'var(--bg)',border:`1px solid ${c.is_internal?'#fde68a':'var(--bd)'}`,borderRadius:8,padding:'10px 12px'}}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold">{c.user_name||'System'}</span>
-                <span className="text-xs text-muted">{c.created_at?.slice(0,16)}{c.is_internal&&<Badge label="Intern" v="bw" style={{marginLeft:6}}/>}</span>
-              </div>
-              <HtmlView html={c.content} maxHeight={300}/>
-            </div>))}
-        </div>}
-        {emailTab==='emails'&&<div style={{display:'flex',flexDirection:'column',gap:6}}>
-          {(ticket.emails||[]).length===0?<div className="text-muted text-sm" style={{padding:16,textAlign:'center'}}>Keine E-Mails</div>:(ticket.emails||[]).map((e,i)=>(
-            <div key={i} style={{background:'var(--bg)',border:'1px solid var(--bd)',borderRadius:8,padding:'10px 12px'}}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold">{e.direction==='sent'?`→ ${e.to_email}`:`← ${e.from_email}`}</span>
-                <span className="text-xs text-muted">{e.sent_at?.slice(0,16)}</span>
-              </div>
-              <div className="text-xs font-medium text-muted mb-2">{e.subject}</div>
-              {e.body&&<HtmlView html={e.body} maxHeight={260}/>}
-            </div>))}
         </div>}
       </div>
     </div>
