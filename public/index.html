@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ServiceDesk Pro</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root{--p:#0d9488;--pd:#0f766e;--pl:#ccfbf1;--pb:#f0fdfa;--ac:#06b6d4;--dn:#ef4444;--wn:#f59e0b;--sc:#10b981;--sb:#0f172a;--sh:#1e293b;--st:#94a3b8;--bg:#f8fafc;--card:#fff;--bd:#e2e8f0;--tx:#0f172a;--tm:#64748b;--tl:#94a3b8}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+    .app{display:flex;height:100vh;overflow:hidden}
+    .sidebar{background:var(--sb);display:flex;flex-direction:column;flex-shrink:0;transition:width .2s;overflow:hidden}
+    .sidebar.open{width:252px}.sidebar.closed{width:66px}
+    .sb-logo{display:flex;align-items:center;gap:10px;padding:18px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+    .sb-logo-icon{width:34px;height:34px;background:var(--p);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .sb-logo-name{font-size:15px;font-weight:700;color:#fff;white-space:nowrap}
+    .sb-logo-sub{font-size:10px;color:var(--st);white-space:nowrap}
+    .sb-nav{flex:1;padding:10px 8px;overflow-y:auto}
+    .sb-section{font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.08em;padding:8px 8px 3px;white-space:nowrap;overflow:hidden}
+    .nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;margin-bottom:1px;transition:all .15s;border:none;background:none;width:100%;color:var(--st);font-size:13px;font-weight:500;text-align:left;white-space:nowrap}
+    .nav-item:hover{background:var(--sh);color:#fff}
+    .nav-item.active{background:var(--p);color:#fff}
+    .nav-label{flex:1}
+    .nav-badge{background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px}
+    .sb-footer{padding:10px 8px;border-top:1px solid rgba(255,255,255,.08)}
+    .user-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .15s}
+    .user-row:hover{background:var(--sh)}
+    .uavatar{width:30px;height:30px;background:linear-gradient(135deg,var(--p),var(--ac));border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0}
+    .uname{color:#fff;font-size:12px;font-weight:600;white-space:nowrap}
+    .urole{color:var(--st);font-size:11px;white-space:nowrap}
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+    .topbar{background:#fff;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:58px;flex-shrink:0;gap:12px}
+    .search-wrap{position:relative}
+    .search-input{background:var(--bg);border:1px solid var(--bd);border-radius:9px;padding:8px 12px 8px 34px;font-size:13px;width:260px;outline:none;color:var(--tx);transition:all .15s}
+    .search-input:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(13,148,136,.12)}
+    .search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tl)}
+    .tb-actions{display:flex;align-items:center;gap:6px}
+    .ico-btn{width:34px;height:34px;border-radius:9px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tm);transition:background .15s;position:relative}
+    .ico-btn:hover{background:var(--bg)}
+    .ndot{position:absolute;top:5px;right:5px;width:7px;height:7px;background:var(--dn);border-radius:50%;border:2px solid #fff}
+    .tb-div{width:1px;height:24px;background:var(--bd);margin:0 2px}
+    .tb-user{display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:8px;cursor:pointer;transition:background .15s}
+    .tb-user:hover{background:var(--bg)}
+    .tb-av{width:30px;height:30px;background:linear-gradient(135deg,var(--p),var(--ac));border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+    .content{flex:1;overflow-y:auto;padding:22px}
+    .card{background:#fff;border-radius:12px;border:1px solid var(--bd)}
+    .card-p{padding:20px}
+    .kpi{background:#fff;border-radius:14px;padding:18px;border:1px solid var(--bd);transition:transform .15s,box-shadow .15s}
+    .kpi:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.07)}
+    .kpi-ico{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center}
+    .kpi-val{font-size:26px;font-weight:700;margin-top:10px}
+    .kpi-lbl{font-size:12px;color:var(--tm);margin-top:3px}
+    .kpi-trend{font-size:11px;font-weight:600;display:flex;align-items:center;gap:2px;margin-top:4px}
+    .trend-up{color:var(--sc)}.trend-dn{color:var(--dn)}
+    .badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:500;white-space:nowrap}
+    .bd{background:#f1f5f9;color:#475569}.bp{background:#dbeafe;color:#1d4ed8}.bs{background:#d1fae5;color:#065f46}
+    .bw{background:#fef3c7;color:#92400e}.br{background:#fee2e2;color:#991b1b}.bpu{background:#f3e8ff;color:#6b21a8}
+    .bt{background:#ccfbf1;color:#134e4a}.bi{background:#cffafe;color:#155e75}
+    table{width:100%;border-collapse:collapse}
+    thead th{text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tm);padding:10px 14px;background:#f8fafc;border-bottom:1px solid var(--bd)}
+    tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s;cursor:pointer}
+    tbody tr:hover{background:#f8fafc}
+    tbody tr:last-child{border-bottom:none}
+    td{padding:11px 14px;font-size:13px;vertical-align:middle}
+    .form-group{display:flex;flex-direction:column;gap:5px}
+    .lbl{font-size:12px;font-weight:500;color:var(--tx)}
+    .inp{border:1px solid var(--bd);border-radius:8px;padding:9px 11px;font-size:13px;outline:none;color:var(--tx);background:#fff;transition:all .15s;font-family:inherit;width:100%}
+    .inp:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(13,148,136,.12)}
+    textarea.inp{resize:vertical}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:inherit}
+    .btn-p{background:var(--p);color:#fff}.btn-p:hover{background:var(--pd)}
+    .btn-d{background:#dc2626;color:#fff}.btn-d:hover{background:#b91c1c}
+    .btn-g{background:transparent;color:var(--tm);border:1px solid var(--bd)}.btn-g:hover{background:var(--bg)}
+    .btn-tg{background:transparent;color:var(--p);border:1px solid var(--p)}.btn-tg:hover{background:var(--pb)}
+    .btn-purple{background:#7c3aed;color:#fff}.btn-purple:hover{background:#6d28d9}
+    .btn-red{background:#dc2626;color:#fff}.btn-red:hover{background:#b91c1c}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn-sm{padding:6px 11px;font-size:12px}
+    .modal-ov{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(3px)}
+    .modal{background:#fff;border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,.2);width:100%;max-width:660px;max-height:92vh;overflow:hidden;animation:mIn .18s ease-out}
+    .modal-lg{max-width:820px}
+    @keyframes mIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+    .modal-hd{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--bd)}
+    .modal-bd{padding:22px;overflow-y:auto;max-height:calc(92vh - 68px)}
+    .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+    .pt{font-size:20px;font-weight:700}
+    .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+    .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+    .tabs{display:flex;gap:2px;border-bottom:1px solid var(--bd);margin-bottom:18px}
+    .tab{padding:9px 14px;font-size:13px;font-weight:500;color:var(--tm);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;display:flex;align-items:center;gap:5px}
+    .tab.active{color:var(--p);border-bottom-color:var(--p)}
+    .tab:hover:not(.active){color:var(--tx)}
+    .filter-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+    .email-item{display:flex;align-items:flex-start;gap:11px;padding:13px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .1s}
+    .email-item:hover{background:#f8fafc}
+    .email-item.unread{background:#f0fdfa}
+    .email-av{width:34px;height:34px;border-radius:9px;background:var(--p);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;flex-shrink:0}
+    .email-subj{font-size:13px;color:var(--tx)}
+    .email-unread .email-subj{font-weight:600}
+    .email-prev{font-size:11px;color:var(--tm);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px}
+    .email-time{font-size:11px;color:var(--tl);white-space:nowrap}
+    .sett-card{background:#fff;border-radius:12px;border:1px solid var(--bd);padding:18px;margin-bottom:16px}
+    .sett-title{font-size:14px;font-weight:600;margin-bottom:4px}
+    .sett-desc{font-size:12px;color:var(--tm);margin-bottom:14px}
+    .alert{padding:11px 14px;border-radius:8px;font-size:12px;display:flex;align-items:flex-start;gap:7px;margin-bottom:12px}
+    .alert-s{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+    .alert-e{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+    .alert-i{background:#f0fdfa;border:1px solid #99f6e4;color:#134e4a}
+    .login-page{min-height:100vh;display:flex}
+    .login-left{flex:1;background:linear-gradient(135deg,#0f172a 0%,#134e4a 60%,#0d9488 100%);display:flex;flex-direction:column;justify-content:center;padding:56px;position:relative;overflow:hidden}
+    .login-right{width:420px;flex-shrink:0;display:flex;flex-direction:column;justify-content:center;padding:48px;background:#fff}
+    .login-logo{font-size:26px;font-weight:800;color:#fff;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+    .login-logo-ico{width:40px;height:40px;background:var(--p);border-radius:11px;display:flex;align-items:center;justify-content:center}
+    .login-tag{color:rgba(255,255,255,.65);font-size:15px;margin-bottom:44px}
+    .login-feat{display:flex;flex-direction:column;gap:18px}
+    .login-feat-row{display:flex;align-items:flex-start;gap:12px}
+    .login-feat-ico{width:34px;height:34px;background:rgba(255,255,255,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .login-feat h4{color:#fff;font-size:13px;font-weight:600;margin-bottom:2px}
+    .login-feat p{color:rgba(255,255,255,.55);font-size:12px}
+    .login-deco{position:absolute;right:-80px;bottom:-80px;width:320px;height:320px;background:rgba(255,255,255,.04);border-radius:50%}
+    .login-deco2{position:absolute;right:80px;bottom:120px;width:140px;height:140px;background:rgba(255,255,255,.04);border-radius:50%}
+    .login-title{font-size:22px;font-weight:700;margin-bottom:4px}
+    .login-sub{color:var(--tm);font-size:13px;margin-bottom:28px}
+    .login-err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:10px 12px;border-radius:8px;font-size:12px;margin-bottom:14px}
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+    .fade{animation:fd .2s ease-out}
+    @keyframes fd{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .flex{display:flex}.items-center{align-items:center}.gap-2{gap:8px}.gap-3{gap:12px}.gap-4{gap:16px}
+    .justify-between{justify-content:space-between}.justify-end{justify-content:flex-end}.flex-1{flex:1}.flex-wrap{flex-wrap:wrap}
+    .font-mono{font-family:ui-monospace,monospace}.text-sm{font-size:13px}.text-xs{font-size:11px}
+    .font-semibold{font-weight:600}.font-medium{font-weight:500}.font-bold{font-weight:700}
+    .text-muted{color:var(--tm)}.text-teal{color:var(--p)}
+    .mt-1{margin-top:4px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}.mt-6{margin-top:24px}
+    .mb-1{margin-bottom:4px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}
+    .mr-2{margin-right:8px}.ml-auto{margin-left:auto}
+    .w-full{width:100%}.p-4{padding:16px}.p-5{padding:20px}.relative{position:relative}
+    .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .rounded-lg{border-radius:10px}.rounded-full{border-radius:9999px}
+    .border{border:1px solid var(--bd)}.block{display:block}.inline-flex{display:inline-flex}
+    .overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}
+    .bg-teal{background:var(--pb)}.text-center{text-align:center}
+    @media(max-width:1200px){.g4{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:900px){.g3{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}}
+    @media(max-width:640px){.g4{grid-template-columns:1fr}.g3{grid-template-columns:1fr}.login-left{display:none}.login-right{width:100%}}
+  </style>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useMemo,Fragment}=React;
+
+// ===== API =====
+const api={
+  get:async(p)=>{const t=localStorage.getItem('sd_tok');const r=await fetch(p,{headers:t?{Authorization:'Bearer '+t}:{}});if(r.status===401){localStorage.removeItem('sd_tok');window.location.reload();}return r.json()},
+  post:async(p,b)=>{const t=localStorage.getItem('sd_tok');const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json',...(t?{Authorization:'Bearer '+t}:{})},body:JSON.stringify(b)});return r.json()},
+  put:async(p,b)=>{const t=localStorage.getItem('sd_tok');const r=await fetch(p,{method:'PUT',headers:{'Content-Type':'application/json',...(t?{Authorization:'Bearer '+t}:{})},body:JSON.stringify(b)});return r.json()},
+  del:async(p)=>{const t=localStorage.getItem('sd_tok');const r=await fetch(p,{method:'DELETE',headers:t?{Authorization:'Bearer '+t}:{}});return r.json()}
+};
+
+// ===== ICONS =====
+const I=({n,s=18,c=""})=>{
+  const icons={
+    dashboard:<><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
+    ticket:<><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/></>,
+    alert:<><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></>,
+    monitor:<><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></>,
+    globe:<><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></>,
+    chart:<><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></>,
+    git:<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>,
+    plus:<><path d="M5 12h14M12 5v14"/></>,
+    search:<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>,
+    x:<><path d="M18 6 6 18M6 6l12 12"/></>,
+    check:<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></>,
+    clock:<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
+    alertC:<><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>,
+    arrowUp:<><path d="M7 7h10v10"/><path d="M7 17 17 7"/></>,
+    arrowDown:<><path d="m7 7 10 10"/><path d="M17 7v10H7"/></>,
+    users:<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>,
+    download:<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>,
+    bell:<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>,
+    menu:<><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></>,
+    pkg:<><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></>,
+    settings:<><circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></>,
+    shield:<><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></>,
+    clip:<><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></>,
+    eye:<><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>,
+    chevR:<><path d="m9 18 6-6-6-6"/></>,
+    book:<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>,
+    send:<><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></>,
+    help:<><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></>,
+    mail:<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></>,
+    wifi:<><path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/></>,
+    laptop:<><path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/></>,
+    server:<><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></>,
+    phone:<><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></>,
+    db:<><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></>,
+    logout:<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></>,
+    refresh:<><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></>,
+    reply:<><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></>,
+    link:<><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></>,
+    dot:<><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/></>,
+  };
+  return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline-block',verticalAlign:'middle',flexShrink:0}} className={c}>{icons[n]||null}</svg>;
+};
+
+// ===== CHARTS =====
+const PieChart=({data,size=200})=>{
+  const total=data.reduce((s,d)=>s+d.value,0);let cum=0;
+  const slices=data.map(d=>{const start=cum;cum+=d.value;return{...d,start,end:cum}});
+  const r=size/2-10;const cx=size/2;const cy=size/2;
+  const arc=(s,e)=>{const sa=s/total*Math.PI*2-Math.PI/2;const ea=e/total*Math.PI*2-Math.PI/2;const lg=e-s>total/2?1:0;
+    return`M${cx+r*.6*Math.cos(sa)},${cy+r*.6*Math.sin(sa)} L${cx+r*Math.cos(sa)},${cy+r*Math.sin(sa)} A${r},${r} 0 ${lg} 1 ${cx+r*Math.cos(ea)},${cy+r*Math.sin(ea)} L${cx+r*.6*Math.cos(ea)},${cy+r*.6*Math.sin(ea)} A${r*.6},${r*.6} 0 ${lg} 0 ${cx+r*.6*Math.cos(sa)},${cy+r*.6*Math.sin(sa)} Z`};
+  return <div className="flex items-center gap-4 flex-wrap" style={{justifyContent:'center'}}>
+    <svg width={size} height={size}>{slices.map((s,i)=><path key={i} d={arc(s.start,s.end)} fill={s.color} stroke="#fff" strokeWidth="2"/>)}</svg>
+    <div className="flex flex-col gap-2">{data.map((d,i)=><div key={i} className="flex items-center gap-2 text-xs"><span style={{width:9,height:9,borderRadius:'50%',background:d.color,display:'inline-block',flexShrink:0}}/><span className="text-muted">{d.label||d.name} <strong>({d.value})</strong></span></div>)}</div>
+  </div>;
+};
+
+const BarChart=({data,valueKey,nameKey,colors,height=230})=>{
+  const max=Math.max(...data.map(d=>d[valueKey]),1);
+  const bw=Math.min(44,Math.floor(100/data.length*.65));
+  return <svg viewBox={`0 0 ${data.length*60+20} ${height}`} style={{width:'100%',height}}>
+    {data.map((d,i)=>{const h=(d[valueKey]/max)*(height-44);const x=i*60+18;const c=colors?colors[i]:'#0d9488';
+      return <g key={i}>
+        <rect x={x} y={height-34-h} width={bw} height={Math.max(h,2)} rx={4} fill={c} opacity=".9"/>
+        <text x={x+bw/2} y={height-14} textAnchor="middle" fontSize="10" fill="#64748b">{d[nameKey]||d.name}</text>
+        <text x={x+bw/2} y={height-38-h} textAnchor="middle" fontSize="10" fill="#374151" fontWeight="600">{d[valueKey]}</text>
+      </g>;
+    })}
+  </svg>;
+};
+
+const LineChart=({data,lines,height=230,xKey='date'})=>{
+  const allVals=lines.flatMap(l=>data.map(d=>d[l.key]));const max=Math.max(...allVals,1);const min=0;
+  const w=data.length*24+40;const h=height-36;
+  const pts=key=>data.map((d,i)=>`${i*24+30},${h-((d[key]-min)/(max-min))*h+8}`).join(' ');
+  return <svg viewBox={`0 0 ${w} ${height}`} style={{width:'100%',height}}>
+    {[0,.25,.5,.75,1].map((p,i)=><g key={i}><line x1={28} y1={h-p*h+8} x2={w} y2={h-p*h+8} stroke="#f1f5f9" strokeWidth="1"/><text x={2} y={h-p*h+12} fontSize="8" fill="#94a3b8">{Math.round(min+p*(max-min))}</text></g>)}
+    {lines.map((l,li)=><polyline key={li} points={pts(l.key)} fill="none" stroke={l.color} strokeWidth="2" strokeLinejoin="round"/>)}
+    {data.filter((_,i)=>i%2===0||data.length<8).map((d,i)=><text key={i} x={(i*2<data.length?i*2:i)*24+30} y={height-5} fontSize="8" fill="#94a3b8" textAnchor="middle">{d[xKey]?.slice(-5)}</text>)}
+    <g transform={`translate(${w/2-60},2)`}>{lines.map((l,i)=><g key={i} transform={`translate(${i*80},0)`}><rect width={8} height={3} fill={l.color} y={3} rx={1}/><text x={12} fontSize="9" fill="#64748b" y={8}>{l.name}</text></g>)}</g>
+  </svg>;
+};
+
+// ===== BADGES =====
+const Badge=({label,v='bd'})=><span className={`badge ${v}`}>{label}</span>;
+const SBadge=({s})=>{const m={open:{l:'Offen',v:'bp'},inProgress:{l:'In Bearb.',v:'bw'},pending:{l:'Wartend',v:'bpu'},resolved:{l:'Gelöst',v:'bs'},closed:{l:'Geschlossen',v:'bd'},approved:{l:'Genehmigt',v:'bs'},rejected:{l:'Abgelehnt',v:'br'},pendingApproval:{l:'Ausstehend',v:'bw'},implemented:{l:'Implementiert',v:'bt'},active:{l:'Aktiv',v:'bs'},inactive:{l:'Inaktiv',v:'bd'},maintenance:{l:'Wartung',v:'bw'},retired:{l:'Ausgemustert',v:'br'}};const x=m[s]||{l:s,v:'bd'};return<Badge label={x.l} v={x.v}/>};
+const PBadge=({p})=>{const m={critical:{l:'Kritisch',v:'br'},high:{l:'Hoch',v:'bw'},medium:{l:'Mittel',v:'bi'},low:{l:'Niedrig',v:'bs'}};const x=m[p]||{l:p,v:'bd'};return<Badge label={x.l} v={x.v}/>};
+
+// ===== KPI =====
+const KPI=({icon,label,value,trend,up,color,textColor='text-white'})=>(
+  <div className="kpi">
+    <div className="flex items-center justify-between">
+      <div className="kpi-ico" style={{background:color+'22'}}><I n={icon} s={20} c="" style={{color}}/></div>
+      {trend&&<span className={`kpi-trend ${up?'trend-up':'trend-dn'}`}><I n={up?'arrowUp':'arrowDown'} s={12}/>{trend}</span>}
+    </div>
+    <div className="kpi-val">{value}</div>
+    <div className="kpi-lbl">{label}</div>
+  </div>
+);
+
+// ===== MODAL =====
+const Modal=({open,onClose,title,children,lg=false})=>{
+  if(!open)return null;
+  return <div className="modal-ov" onClick={onClose}>
+    <div className={`modal ${lg?'modal-lg':''}`} onClick={e=>e.stopPropagation()}>
+      <div className="modal-hd"><h2 className="font-semibold" style={{fontSize:16}}>{title}</h2><button onClick={onClose} className="ico-btn"><I n="x" s={18}/></button></div>
+      <div className="modal-bd">{children}</div>
+    </div>
+  </div>;
+};
+
+// ===== LOGIN =====
+const Login=({onLogin})=>{
+  const[u,sU]=useState('');const[p,sP]=useState('');const[err,sErr]=useState('');const[loading,sL]=useState(false);
+  const submit=async(e)=>{e.preventDefault();sL(true);sErr('');
+    const r=await api.post('/api/auth/login',{username:u,password:p});
+    if(r.token){localStorage.setItem('sd_tok',r.token);onLogin(r.user);}
+    else{sErr(r.error||'Anmeldung fehlgeschlagen');}
+    sL(false);
+  };
+  return <div className="login-page">
+    <div className="login-left">
+      <div className="login-deco"/><div className="login-deco2"/>
+      <div className="login-logo">
+        <div className="login-logo-ico"><I n="ticket" s={22} c="" style={{color:'#fff'}}/></div>
+        ServiceDesk Pro
+      </div>
+      <div className="login-tag">Modernes IT Service Management für Ihr Unternehmen</div>
+      <div className="login-feat">
+        {[{ic:'ticket',h:'Ticket-Management',p:'Erstellen und verwalten Sie Anfragen effizient'},
+          {ic:'mail',h:'E-Mail Integration',p:'Automatische Ticket-Erstellung aus eingehenden Mails'},
+          {ic:'chart',h:'Echtzeit-Reporting',p:'SLA-Überwachung und detaillierte Berichte'},
+          {ic:'shield',h:'Sicher & Zuverlässig',p:'JWT-Auth, HTTPS, Datenverschlüsselung'}].map((f,i)=>(
+          <div key={i} className="login-feat-row">
+            <div className="login-feat-ico"><I n={f.ic} s={16} c="" style={{color:'rgba(255,255,255,.8)'}}/></div>
+            <div><h4>{f.h}</h4><p>{f.p}</p></div>
+          </div>))}
+      </div>
+    </div>
+    <div className="login-right">
+      <div style={{marginBottom:32}}><div style={{width:36,height:36,background:'var(--p)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:16}}><I n="ticket" s={18} c="" style={{color:'#fff'}}/></div></div>
+      <div className="login-title">Willkommen zurück</div>
+      <div className="login-sub">Melden Sie sich mit Ihrem Konto an</div>
+      {err&&<div className="login-err">{err}</div>}
+      <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:14}}>
+        <div className="form-group"><label className="lbl">Benutzername</label><input className="inp" value={u} onChange={e=>sU(e.target.value)} autoFocus placeholder="z.B. admin"/></div>
+        <div className="form-group"><label className="lbl">Passwort</label><input className="inp" type="password" value={p} onChange={e=>sP(e.target.value)} placeholder="••••••••"/></div>
+        <button type="submit" className="btn btn-p w-full" style={{justifyContent:'center',marginTop:4}} disabled={loading||!u||!p}>
+          {loading?'Anmelden...':<><I n="chevR" s={16}/>Anmelden</>}
+        </button>
+      </form>
+      <div className="text-muted text-xs mt-4" style={{textAlign:'center'}}>Standard: admin / admin123</div>
+    </div>
+  </div>;
+};
+
+// ===== DASHBOARD =====
+const Dash=({user,onNav,stats})=>{
+  const[data,sData]=useState(null);
+  useEffect(()=>{api.get('/api/dashboard').then(sData)},[]);
+  if(!data)return <div className="text-muted text-sm" style={{padding:40,textAlign:'center'}}>Wird geladen…</div>;
+  const trendD=data.trend||[];
+  const statusD=[{name:'Offen',value:data.ticketsByStatus?.find(s=>s.status==='open')?.count||0,color:'#3b82f6'},{name:'In Bearb.',value:data.ticketsByStatus?.find(s=>s.status==='inProgress')?.count||0,color:'#f59e0b'},{name:'Wartend',value:data.ticketsByStatus?.find(s=>s.status==='pending')?.count||0,color:'#8b5cf6'},{name:'Gelöst',value:data.ticketsByStatus?.find(s=>s.status==='resolved')?.count||0,color:'#10b981'},{name:'Geschl.',value:data.ticketsByStatus?.find(s=>s.status==='closed')?.count||0,color:'#64748b'}];
+  return <div className="fade" style={{display:'flex',flexDirection:'column',gap:20}}>
+    <div style={{background:'linear-gradient(135deg,#0f172a,#0d9488)',borderRadius:14,padding:'22px 24px',color:'#fff',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+      <div><div style={{fontSize:11,color:'rgba(255,255,255,.6)',marginBottom:4}}>Willkommen zurück</div><div style={{fontSize:20,fontWeight:700}}>{user?.name||'Administrator'} 👋</div><div style={{fontSize:12,color:'rgba(255,255,255,.6)',marginTop:2}}>Hier ist Ihre heutige Übersicht</div></div>
+      <button onClick={()=>onNav('tickets')} className="btn" style={{background:'rgba(255,255,255,.15)',color:'#fff',backdropFilter:'blur(4px)'}}><I n="plus" s={15}/>Neues Ticket</button>
+    </div>
+    <div className="g4">
+      <KPI icon="ticket" label="Offene Tickets" value={data.openTickets} trend="+12%" up={false} color="#3b82f6"/>
+      <KPI icon="check" label="Heute gelöst" value={data.resolvedToday} trend="+25%" up={true} color="#10b981"/>
+      <KPI icon="alert" label="Aktive Vorfälle" value={data.activeIncidents} color="#ef4444"/>
+      <KPI icon="mail" label="Ungelesene Mails" value={data.unreadEmails||0} color="#0d9488"/>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'1.6fr 1fr',gap:16}}>
+      <div className="card card-p">
+        <div className="flex items-center justify-between mb-4"><span className="font-semibold">Ticket-Trend (14 Tage)</span></div>
+        <LineChart data={trendD} lines={[{key:'created',color:'#0d9488',name:'Erstellt'}]} height={200} xKey="date"/>
+      </div>
+      <div className="card card-p">
+        <div className="font-semibold mb-4">Nach Status</div>
+        <PieChart data={statusD.filter(d=>d.value>0)} size={180}/>
+      </div>
+    </div>
+    <div className="card">
+      <div className="flex items-center justify-between p-5" style={{borderBottom:'1px solid var(--bd)'}}>
+        <span className="font-semibold">Aktuelle Tickets</span>
+        <button onClick={()=>onNav('tickets')} className="btn btn-sm btn-tg">Alle anzeigen</button>
+      </div>
+      <div className="overflow-x-auto">
+        <table><thead><tr><th>Nummer</th><th>Titel</th><th>Status</th><th>Priorität</th><th>Erstellt</th></tr></thead>
+          <tbody>{(data.recentTickets||[]).slice(0,6).map(t=>(
+            <tr key={t.id} onClick={()=>onNav('tickets')}>
+              <td><span className="font-mono text-xs text-muted">{t.ticket_number}</span></td>
+              <td><span className="font-medium" style={{fontSize:13}}>{t.title}</span></td>
+              <td><SBadge s={t.status}/></td>
+              <td><PBadge p={t.priority}/></td>
+              <td className="text-muted">{t.created_at?.slice(0,10)}</td>
+            </tr>))}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>;
+};
+
+// ===== TICKETS =====
+const Tickets=({user})=>{
+  const[items,sItems]=useState([]);const[total,sTotal]=useState(0);const[loading,sL]=useState(true);
+  const[fS,sFt]=useState('all');const[fP,sFP]=useState('all');const[sq,sSQ]=useState('');
+  const[sel,sSel]=useState(null);const[newM,sNewM]=useState(false);const[agents,sAgents]=useState([]);
+  useEffect(()=>{api.get('/api/users/agents').then(sAgents)},[]);
+  const load=()=>{sL(true);let q=`/api/tickets?limit=50&status=${fS}&priority=${fP}`;if(sq)q+=`&search=${encodeURIComponent(sq)}`;api.get(q).then(r=>{sItems(r.data||[]);sTotal(r.total||0);sL(false)})};
+  useEffect(()=>{load()},[fS,fP,sq]);
+  const openTicket=async(t)=>{const d=await api.get(`/api/tickets/${t.id}`);sSel(d)};
+  const csv=()=>{const h='Nummer,Titel,Status,Priorität,Erstellt\n';const r=items.map(t=>[t.ticket_number,`"${t.title}"`,t.status,t.priority,t.created_at?.slice(0,10)].join(',')).join('\n');const b=new Blob([h+r],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='tickets.csv';a.click()};
+  return <div className="fade" style={{display:'flex',flexDirection:'column',gap:16}}>
+    <div className="ph"><span className="pt">Tickets <span className="font-medium text-muted" style={{fontSize:14}}>({total})</span></span>
+      <div className="flex gap-2">
+        <button onClick={csv} className="btn btn-g btn-sm"><I n="download" s={14}/>CSV</button>
+        <button onClick={()=>sNewM(true)} className="btn btn-p btn-sm"><I n="plus" s={14}/>Neues Ticket</button>
+      </div>
+    </div>
+    <div className="card card-p">
+      <div className="filter-bar">
+        <div className="relative flex-1" style={{minWidth:200}}>
+          <input className="inp" placeholder="Suchen…" value={sq} onChange={e=>sSQ(e.target.value)} style={{paddingLeft:32}}/>
+          <span className="search-ico" style={{top:10,left:10}}><I n="search" s={15}/></span>
+        </div>
+        <select className="inp" style={{width:'auto'}} value={fS} onChange={e=>sFt(e.target.value)}>
+          <option value="all">Alle Status</option><option value="open">Offen</option><option value="inProgress">In Bearbeitung</option><option value="pending">Wartend</option><option value="resolved">Gelöst</option><option value="closed">Geschlossen</option>
+        </select>
+        <select className="inp" style={{width:'auto'}} value={fP} onChange={e=>sFP(e.target.value)}>
+          <option value="all">Alle Prioritäten</option><option value="critical">Kritisch</option><option value="high">Hoch</option><option value="medium">Mittel</option><option value="low">Niedrig</option>
+        </select>
+      </div>
+      <div className="overflow-x-auto">
+        <table><thead><tr><th>Nummer</th><th>Titel</th><th>Status</th><th>Priorität</th><th>Zugewiesen</th><th>Erstellt</th></tr></thead>
+          <tbody>{loading?<tr><td colSpan={6} style={{textAlign:'center',padding:32,color:'var(--tl)'}}>Wird geladen…</td></tr>:items.length===0?<tr><td colSpan={6} style={{textAlign:'center',padding:32,color:'var(--tl)'}}>Keine Ergebnisse</td></tr>:items.map(t=>(
+            <tr key={t.id} onClick={()=>openTicket(t)}>
+              <td><span className="font-mono text-xs text-muted">{t.ticket_number}</span></td>
+              <td><div className="font-medium" style={{fontSize:13}}>{t.title}</div><div className="text-xs text-muted">{t.requester_name}{t.requester_type==='external'?' (Extern)':''}</div></td>
+              <td><SBadge s={t.status}/></td><td><PBadge p={t.priority}/></td>
+              <td className="text-sm text-muted">{t.assignee_name||'—'}</td>
+              <td className="text-sm text-muted">{t.created_at?.slice(0,10)}</td>
+            </tr>))}</tbody>
+        </table>
+      </div>
+    </div>
+    <TicketDetail ticket={sel} onClose={()=>sSel(null)} agents={agents} onUpdate={t=>{sSel(t);load()}} user={user}/>
+    <NewTicket open={newM} onClose={()=>sNewM(false)} agents={agents} onSave={()=>{sNewM(false);load()}}/>
+  </div>;
+};
+
+const TicketDetail=({ticket,onClose,agents,onUpdate,user})=>{
+  const[comment,sComment]=useState('');const[internal,sInternal]=useState(false);
+  const[emailTo,sEmailTo]=useState('');const[emailBody,sEmailBody]=useState('');const[emailTab,sEmailTab]=useState('comment');
+  const[sending,sSending]=useState(false);
+  if(!ticket)return null;
+  const addComment=async()=>{if(!comment.trim())return;await api.post(`/api/tickets/${ticket.id}/comments`,{content:comment,is_internal:internal});sComment('');const updated=await api.get(`/api/tickets/${ticket.id}`);onUpdate(updated)};
+  const sendEmail=async()=>{if(!emailTo||!emailBody)return;sSending(true);await api.post(`/api/tickets/${ticket.id}/send-email`,{to:emailTo,body:emailBody});sEmailBody('');sSending(false);const updated=await api.get(`/api/tickets/${ticket.id}`);onUpdate(updated)};
+  const changeStatus=async(s)=>{const updated=await api.put(`/api/tickets/${ticket.id}`,{status:s});onUpdate(updated)};
+  return <Modal open={true} onClose={onClose} lg={true} title={ticket.ticket_number}>
+    <div style={{display:'flex',flexDirection:'column',gap:18}}>
+      <div><h3 style={{fontSize:17,fontWeight:700,marginBottom:10}}>{ticket.title}</h3>
+        <div className="g2 gap-3">
+          {[[<SBadge s={ticket.status}/>,{label:'Status'}],[<PBadge p={ticket.priority}/>,{label:'Priorität'}],[ticket.requester_name||'—',{label:'Anfragender'}],[ticket.requester_email||'—',{label:'E-Mail'}],[ticket.category||'—',{label:'Kategorie'}],[ticket.assignee_name||'Nicht zugewiesen',{label:'Zugewiesen'}]].map(([v,{label}],i)=>(
+            <div key={i}><div className="text-xs text-muted mb-1">{label}</div><div className="text-sm font-medium">{v}</div></div>))}
+        </div>
+        {ticket.description&&<div className="mt-3"><div className="text-xs text-muted mb-1">Beschreibung</div><div className="text-sm" style={{background:'var(--bg)',borderRadius:8,padding:'10px 12px',lineHeight:1.6}}>{ticket.description}</div></div>}
+      </div>
+      <div style={{borderTop:'1px solid var(--bd)',paddingTop:16}}>
+        <div className="flex gap-2 mb-3 flex-wrap">
+          <span className="text-xs font-semibold text-muted" style={{alignSelf:'center'}}>Status ändern:</span>
+          {['open','inProgress','pending','resolved','closed'].map(s=>(
+            <button key={s} onClick={()=>changeStatus(s)} className={`btn btn-sm ${ticket.status===s?'btn-p':'btn-g'}`} style={{fontSize:11}}><SBadge s={s}/></button>))}
+        </div>
+      </div>
+      <div>
+        <div className="tabs">
+          <button className={`tab ${emailTab==='comment'?'active':''}`} onClick={()=>sEmailTab('comment')}><I n="clip" s={13}/>Kommentar</button>
+          <button className={`tab ${emailTab==='email'?'active':''}`} onClick={()=>sEmailTab('email')}><I n="reply" s={13}/>E-Mail senden</button>
+          <button className={`tab ${emailTab==='history'?'active':''}`} onClick={()=>sEmailTab('history')}><I n="clock" s={13}/>Verlauf</button>
+          <button className={`tab ${emailTab==='emails'?'active':''}`} onClick={()=>sEmailTab('emails')}><I n="mail" s={13}/>Mails ({(ticket.emails||[]).length})</button>
+        </div>
+        {emailTab==='comment'&&<div style={{display:'flex',flexDirection:'column',gap:10}}>
+          <textarea className="inp" rows={3} placeholder="Kommentar hinzufügen…" value={comment} onChange={e=>sComment(e.target.value)}/>
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={internal} onChange={e=>sInternal(e.target.checked)}/> Intern (nicht für Kunden sichtbar)</label>
+            <button onClick={addComment} className="btn btn-p btn-sm" disabled={!comment.trim()}><I n="send" s={13}/>Senden</button>
+          </div>
+        </div>}
+        {emailTab==='email'&&<div style={{display:'flex',flexDirection:'column',gap:10}}>
+          <div className="form-group"><label className="lbl">An (E-Mail)</label><input className="inp" placeholder="empfaenger@example.com" value={emailTo} onChange={e=>sEmailTo(e.target.value)}/></div>
+          <div className="form-group"><label className="lbl">Nachricht</label><textarea className="inp" rows={4} placeholder="Ihre Nachricht an den Kunden…" value={emailBody} onChange={e=>sEmailBody(e.target.value)}/></div>
+          <div className="flex justify-end"><button onClick={sendEmail} className="btn btn-p btn-sm" disabled={!emailTo||!emailBody||sending}><I n="send" s={13}/>{sending?'Wird gesendet…':'E-Mail senden'}</button></div>
+        </div>}
+        {emailTab==='history'&&<div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {(ticket.comments||[]).length===0?<div className="text-muted text-sm" style={{padding:16,textAlign:'center'}}>Keine Kommentare</div>:(ticket.comments||[]).map((c,i)=>(
+            <div key={i} style={{background:c.is_internal?'#fffbeb':'var(--bg)',border:`1px solid ${c.is_internal?'#fde68a':'var(--bd)'}`,borderRadius:8,padding:'10px 12px'}}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold">{c.user_name||'System'}</span>
+                <span className="text-xs text-muted">{c.created_at?.slice(0,16)}{c.is_internal&&<Badge label="Intern" v="bw" style={{marginLeft:6}}/>}</span>
+              </div>
+              <div className="text-sm" style={{lineHeight:1.5}}>{c.content}</div>
+            </div>))}
+        </div>}
+        {emailTab==='emails'&&<div style={{display:'flex',flexDirection:'column',gap:6}}>
+          {(ticket.emails||[]).length===0?<div className="text-muted text-sm" style={{padding:16,textAlign:'center'}}>Keine E-Mails</div>:(ticket.emails||[]).map((e,i)=>(
+            <div key={i} style={{background:'var(--bg)',border:'1px solid var(--bd)',borderRadius:8,padding:'10px 12px'}}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold">{e.direction==='sent'?`→ ${e.to_email}`:`← ${e.from_email}`}</span>
+                <span className="text-xs text-muted">{e.sent_at?.slice(0,16)}</span>
+              </div>
+              <div className="text-xs font-medium text-muted">{e.subject}</div>
+            </div>))}
+        </div>}
+      </div>
+    </div>
+  </Modal>;
+};
+
+const NewTicket=({open,onClose,agents,onSave})=>{
+  const[f,sF]=useState({title:'',description:'',priority:'medium',category:'Hardware',requester_name:'',requester_email:'',requester_type:'internal',assigned_to:''});
+  const save=async()=>{await api.post('/api/tickets',f);onSave()};
+  return <Modal open={open} onClose={onClose} title="Neues Ticket">
+    <div style={{display:'flex',flexDirection:'column',gap:14}}>
+      <div className="form-group"><label className="lbl">Titel *</label><input className="inp" value={f.title} onChange={e=>sF({...f,title:e.target.value})}/></div>
+      <div className="form-group"><label className="lbl">Beschreibung</label><textarea className="inp" rows={3} value={f.description} onChange={e=>sF({...f,description:e.target.value})}/></div>
+      <div className="g2">
+        <div className="form-group"><label className="lbl">Priorität</label><select className="inp" value={f.priority} onChange={e=>sF({...f,priority:e.target.value})}><option value="critical">Kritisch</option><option value="high">Hoch</option><option value="medium">Mittel</option><option value="low">Niedrig</option></select></div>
+        <div className="form-group"><label className="lbl">Kategorie</label><select className="inp" value={f.category} onChange={e=>sF({...f,category:e.target.value})}>{['Hardware','Software','Netzwerk','Zugang','E-Mail','Performance','Beschaffung','Entwicklung'].map(c=><option key={c}>{c}</option>)}</select></div>
+        <div className="form-group"><label className="lbl">Anfragender Name</label><input className="inp" value={f.requester_name} onChange={e=>sF({...f,requester_name:e.target.value})}/></div>
+        <div className="form-group"><label className="lbl">Anfragender E-Mail</label><input className="inp" type="email" value={f.requester_email} onChange={e=>sF({...f,requester_email:e.target.value})}/></div>
+        <div className="form-group"><label className="lbl">Typ</label><select className="inp" value={f.requester_type} onChange={e=>sF({...f,requester_type:e.target.value})}><option value="internal">Intern</option><option value="external">Extern</option></select></div>
+        <div className="form-group"><label className="lbl">Zuweisen an</label><select className="inp" value={f.assigned_to} onChange={e=>sF({...f,assigned_to:e.target.value})}><option value="">— Nicht zugewiesen —</option>{agents.map(a=><option key={a.id} value={a.id}>{a.full_name}</option>)}</select></div>
+      </div>
+      <div className="flex justify-end gap-2 mt-2"><button onClick={onClose} className="btn btn-g">Abbrechen</button><button onClick={save} disabled={!f.title} className="btn btn-p"><I n="check" s={14}/>Erstellen</button></div>
+    </div>
+  </Modal>;
+};
+
+// ===== INCIDENTS =====
+const Incidents=()=>{
+  const[items,sItems]=useState([]);const[loading,sL]=useState(true);const[sel,sSel]=useState(null);const[newM,sNewM]=useState(false);
+  useEffect(()=>{api.get('/api/incidents?limit=50').then(r=>{sItems(r.data||[]);sL(false)})},[]);
+  return <div className="fade" style={{display:'flex',flexDirection:'column',gap:16}}>
+    <div className="ph"><span className="pt">Vorfälle</span><button onClick={()=>sNewM(true)} className="btn btn-red btn-sm"><I n="plus" s={14}/>Neuer Vorfall</button></div>
+    <div className="g4">
+      <KPI icon="alert" label="Aktive Vorfälle" value={items.filter(i=>['open','inProgress'].includes(i.status)).length} color="#ef4444"/>
+      <KPI icon="alertC" label="Kritisch" value={items.filter(i=>i.priority==='critical').length} color="#f59e0b"/>
+      <KPI icon="clock" label="In Bearbeitung" value={items.filter(i=>i.status==='inProgress').length} color="#3b82f6"/>
+      <KPI icon="check" label="Gelöst" value={items.filter(i=>i.status==='resolved').length} color="#10b981"/>
+    </div>
+    <div className="card">
+      <div className="overflow-x-auto">
+        <table><thead><tr><th>Nummer</th><th>Titel</th><th>Status</th><th>Priorität</th><th>Auswirkung</th><th>Betroffene Services</th><th>Erstellt</th></tr></thead>
+          <tbody>{loading?<tr><td colSpan={7} style={{textAlign:'center',padding:32,color:'var(--tl)'}}>Laden…</td></tr>:items.map(inc=>(
+            <tr key={inc.id} onClick={()=>sSel(inc)}>
+              <td><span className="font-mono text-xs text-muted">{inc.incident_number}</span></td>
+              <td className="font-medium" style={{fontSize:13}}>{inc.title}</td>
+              <td><SBadge s={inc.status}/></td><td><PBadge p={inc.priority}/></td><td><PBadge p={inc.impact}/></td>
+              <td><div className="flex flex-wrap gap-1">{(inc.affected_services||'').split(',').filter(Boolean).map((s,i)=><Badge key={i} label={s.trim()} v="bi"/>)}</div></td>
+              <td className="text-sm text-muted">{inc.created_at?.slice(0,10)}</td>
+            </tr>))}</tbody>
+        </table>
+      </div>
+    </div>
+    <Modal open={!!sel} onClose={()=>sSel(null)} title={sel?.incident_number}>
+      {sel&&<div style={{display:'flex',flexDirection:'column',gap:14}}>
+        <h3 style={{fontSize:16,fontWeight:700}}>{sel.title}</h3>
+        <div className="g2">
+          {[[<SBadge s={sel.status}/>,'Status'],[<PBadge p={sel.priority}/>,'Priorität'],[<PBadge p={sel.impact}/>,'Auswirkung'],[<PBadge p={sel.urgency}/>,'Dringlichkeit'],[sel.assignee_name||'—','Zugewiesen'],[sel.created_at?.slice(0,10),'Erstellt']].map(([v,l],i)=>(
+            <div key={i}><div className="text-xs text-muted mb-1">{l}</div><div className="font-medium text-sm">{v}</div></div>))}
+        </div>
+        {sel.affected_services&&<div><div className="text-xs text-muted mb-1">Betroffene Services</div><div className="flex flex-wrap gap-1">{sel.affected_services.split(',').map((s,i)=><Badge key={i} label={s.trim()} v="bi"/>)}</div></div>}
+        {sel.workaround&&<div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'10px 12px'}}><div className="text-xs font-semibold text-muted mb-1">Workaround</div><div className="text-sm">{sel.workaround}</div></div>}
+      </div>}
+    </Modal>
+    <Modal open={newM} onClose={()=>sNewM(false)} title="Neuer Vorfall">
+      <NewIncident onSave={async(f)=>{await api.post('/api/incidents',f);sNewM(false);api.get('/api/incidents?limit=50').then(r=>sItems(r.data||[]))}}/>
+    </Modal>
+  </div>;
+};
+
+const NewIncident=({onSave})=>{
+  const[f,sF]=useState({title:'',description:'',priority:'high',impact:'high',urgency:'high',affected_services:'',workaround:''});
+  return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+    <div className="form-group"><label className="lbl">Titel *</label><input className="inp" value={f.title} onChange={e=>sF({...f,title:e.target.value})}/></div>
+    <div className="form-group"><label className="lbl">Beschreibung</label><textarea className="inp" rows={3} value={f.description} onChange={e=>sF({...f,description:e.target.value})}/></div>
+    <div className="g3">
+      <div className="form-group"><label className="lbl">Priorität</label><select className="inp" value={f.priority} onChange={e=>sF({...f,priority:e.target.value})}><option value="critical">Kritisch</option><option value="high">Hoch</option><option value="medium">Mittel</option><option value="low">Niedrig</option></select></div>
+      <div className="form-group"><label className="lbl">Auswirkung</label><select className="inp" value={f.impact} onChange={e=>sF({...f,impact:e.target.value})}><option value="critical">Kritisch</option><option value="high">Hoch</option><option value="medium">Mittel</option><option value="low">Niedrig</option></select></div>
+      <div className="form-group"><label className="lbl">Dringlichkeit</label><select className="inp" value={f.urgency} onChange={e=>sF({...f,urgency:e.target.value})}><option value="critical">Kritisch</option><option value="high">Hoch</option><option value="medium">Mittel</option><option value="low">Niedrig</option></select></div>
+    </div>
+    <div className="form-group"><label className="lbl">Betroffene Services (kommagetrennt)</label><input className="inp" value={f.affected_services} onChange={e=>sF({...f,affected_services:e.target.value})}/></div>
+    <div className="form-group"><label className="lbl">Workaround</label><textarea className="inp" rows={2} value={f.workaround} onChange={e=>sF({...f,workaround:e.target.value})}/></div>
+    <div className="flex justify-end"><button onClick={()=>onSave(f)} disabled={!f.title} className="btn btn-p"><I n="check" s={14}/>Erstellen</button></div>
+  </div>;
+};
+
+// ===== ASSETS =====
+const Assets=()=>{
+  const[items,sItems]=useState([]);const[total,sTotal]=useState(0);const[loading,sL]=useState(true);
+  const[fT,sFT]=useState('all');const[fS,sFS]=useState('all');const[sq,sSQ]=useState('');const[sel,sSel]=useState(null);const[newM,sNewM]=useState(false);
+  const load=()=>{sL(true);let q=`/api/assets?limit=50&type=${fT}&status=${fS}`;if(sq)q+=`&search=${encodeURIComponent(sq)}`;api.get(q).then(r=>{sItems(r.data||[]);sTotal(r.total||0);sL(false)})};
+  useEffect(()=>{load()},[fT,fS,sq]);
+  const typeIco={desktop:'monitor',laptop:'laptop',server:'server',mobile:'phone',network:'wifi',software:'db'};
+  return <div className="fade" style={{display:'flex',flexDirection:'column',gap:16}}>
+    <div className="ph"><span className="pt">Assets <span className="font-medium text-muted" style={{fontSize:14}}>({total})</span></span>
+      <button onClick={()=>sNewM(true)} className="btn btn-sm" style={{background:'#059669',color:'#fff'}}><I n="plus" s={14}/>Neues Asset</button>
+    </div>
+    <div className="g4">
+      <KPI icon="pkg" label="Gesamt" value={total} color="#0d9488"/>
+      <KPI icon="check" label="Aktiv" value={items.filter(a=>a.status==='active').length} color="#10b981"/>
+      <KPI icon="settings" label="In Wartung" value={items.filter(a=>a.status==='maintenance').length} color="#f59e0b"/>
+      <KPI icon="alertC" label="Ausgemustert" value={items.filter(a=>a.status==='retired').length} color="#64748b"/>
+    </div>
+    <div className="card card-p">
+      <div className="filter-bar">
+        <div className="relative flex-1" style={{minWidth:180}}><input className="inp" placeholder="Suchen…" value={sq} onChange={e=>sSQ(e.target.value)} style={{paddingLeft:32}}/><span className="search-ico" style={{top:10,left:10}}><I n="search" s={15}/></span></div>
+        <select className="inp" style={{width:'auto'}} value={fT} onChange={e=>sFT(e.target.value)}><option value="all">Alle Typen</option>{['desktop','laptop','server','mobile','network','software'].map(t=><option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}</select>
+        <select className="inp" style={{width:'auto'}} value={fS} onChange={e=>sFS(e.target.value)}><option value="all">Alle Status</option><option value="active">Aktiv</option><option value="maintenance">Wartung</option><option value="inactive">Inaktiv</option><option value="retired">Ausgemustert</option></select>
+      </div>
+      <div className="overflow-x-auto">
+        <table><thead><tr><th>Tag</th><th>Name</th><th>Typ</th><th>Status</th><th>Zugewiesen</th><th>Standort</th><th>Garantie</th></tr></thead>
+          <tbody>{loading?<tr><td colSpan={7} style={{textAlign:'center',padding:32,color:'var(--tl)'}}>Laden…</td></tr>:items.map(a=>{const exp=a.warranty_end&&new Date(a.warranty_end)<new Date();return(
+            <tr key={a.id} onClick={()=>sSel(a)}>
+              <td><span className="font-mono text-xs text-muted">{a.asset_tag}</span></td>
+              <td><div className="flex items-center gap-2"><I n={typeIco[a.type]||'pkg'} s={14} c="text-muted"/><span className="font-medium text-sm">{a.name}</span></div></td>
+              <td><Badge label={a.type} v="bi"/></td><td><SBadge s={a.status}/></td>
+              <td className="text-sm text-muted">{a.assigned_to_name||'—'}</td>
+              <td className="text-sm text-muted">{a.location||'—'}</td>
+              <td><span className="text-sm" style={{color:exp?'#dc2626':'inherit',fontWeight:exp?600:'normal'}}>{a.warranty_end?.slice(0,10)||'—'}{exp?' ⚠️':''}</span></td>
+            </tr>)})}</tbody>
+        </table>
+      </div>
+    </div>
+    <Modal open={!!sel} onClose={()=>sSel(null)} title={sel?`${sel.asset_tag} – ${sel.name}`:''}>
+      {sel&&<div className="g2">
+        {[['Typ',<Badge label={sel.type} v="bi"/>],['Status',<SBadge s={sel.status}/>],['Seriennummer',sel.serial_number||'—'],['Standort',sel.location||'—'],['Zugewiesen',sel.assigned_to_name||'—'],['Abteilung',sel.department||'—'],['Kaufdatum',sel.purchase_date?.slice(0,10)||'—'],['Garantieende',sel.warranty_end?.slice(0,10)||'—'],['IP',sel.ip_address||'—'],['MAC',sel.mac_address||'—']].map(([l,v],i)=>(
+          <div key={i}><div className="text-xs text-muted mb-1">{l}</div><div className="font-medium text-sm">{v}</div></div>))}
+      </div>}
+    </Modal>
+    <Modal open={newM} onClose={()=>sNewM(false)} title="Neues Asset">
+      <NewAsset onSave={async(f)=>{await api.post('/api/assets',f);sNewM(false);load()}}/>
+    </Modal>
+  </div>;
+};
+
+const NewAsset=({onSave})=>{
+  const[f,sF]=useState({name:'',type:'laptop',serial_number:'',status:'active',location:'',assigned_to_name:'',department:'',purchase_date:'',warranty_end:''});
+  return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+    <div className="g2">
+      <div className="form-group" style={{gridColumn:'1/-1'}}><label className="lbl">Name *</label><input className="inp" value={f.name} onChange={e=>sF({...f,name:e.target.value})}/></div>
+      <div className="form-group"><label className="lbl">Typ</label><select className="inp" value={f.type} onChange={e=>sF({...f,type:e.target.value})}>{['desktop','laptop','server','mobile','network','software'].map(t=><option key={t}>{t}</option>)}</select></div>
+      <div className="form-group"><label className="lbl">Status</label><select className="inp" value={f.status} onChange={e=>sF({...f,status:e.target.value})}><option value="active">Aktiv</option><option value="maintenance">Wartung</option><option value="inactive">Inaktiv</option></select></div>
+      <div className="form-group"><label className="lbl">Seriennummer</label><input className="inp" value={f.serial_number} onChange={e=>sF({...f,serial_number:e.target.value})}/></div>
+      <div className="form-group"><label className="lbl">Standort</label><input className="inp" value={f.location} onChange={e=>sF({...f,location:e.target.value})}/></div>
+      <div className="form-group"><label className="lbl">Zugewiesen an</label><input className="inp" value={f.assigned_to_name} onChange={e=>sF({...f,assigned_to_name:e.target.value})}/></div>
+      <div className="form-group"><label className="lbl">Abteilung</label><input className="inp" value={f.department} onChange={e=>sF({...f,department:e.target.value})}/></div>
+      <div className="form-group"><label className="lbl">Kaufdatum</label><input className="inp" type="date" value={f.purchase_date} onChange={e=>sF({...f,purchase_date:e.target.value})}/></div>
+      <div className="form-group"><label className="lbl">Garantieende</label><input className="inp" type="date" value={f.warranty_end} onChange={e=>sF({...f,warranty_end:e.target.value})}/></div>
+    </div>
+    <div className="flex justify-end"><button onClick={()=>onSave(f)} disabled={!f.name} className="btn btn-p"><I n="check" s={14}/>Erstellen</button></div>
+  </div>;
+};
+
+// ===== CHANGES =====
+const Changes=()=>{
+  const[items,sItems]=useState([]);const[loading,sL]=useState(true);const[sel,sSel]=useState(null);const[newM,sNewM]=useState(false);
+  useEffect(()=>{api.get('/api/changes?limit=50').then(r=>{sItems(r.data||[]);sL(false)})},[]);
+  const riskV={low:'bs',medium:'bw',high:'br'};const typeV={normal:'bp',standard:'bt',emergency:'br'};
+  return <div className="fade" style={{display:'flex',flexDirection:'column',gap:16}}>
+    <div className="ph"><span className="pt">Änderungen</span><button onClick={()=>sNewM(true)} className="btn btn-purple btn-sm"><I n="plus" s={14}/>Neue Änderung</button></div>
+    <div className="g4">
+      <KPI icon="git" label="Offen" value={items.filter(c=>c.status==='pendingApproval').length} color="#8b5cf6"/>
+      <KPI icon="clip" label="Genehmigt" value={items.filter(c=>c.status==='approved').length} color="#10b981"/>
+      <KPI icon="clock" label="Ausstehend" value={items.filter(c=>c.status==='pendingApproval').length} color="#f59e0b"/>
+      <KPI icon="check" label="Implementiert" value={items.filter(c=>c.status==='implemented').length} color="#0d9488"/>
+    </div>
+    <div className="card">
+      <div className="overflow-x-auto">
+        <table><thead><tr><th>Nummer</th><th>Titel</th><th>Typ</th><th>Risiko</th><th>Status</th><th>Implementierung</th></tr></thead>
+          <tbody>{loading?<tr><td colSpan={6} style={{textAlign:'center',padding:32,color:'var(--tl)'}}>Laden…</td></tr>:items.map(c=>(
+            <tr key={c.id} onClick={()=>sSel(c)}>
+              <td><span className="font-mono text-xs text-muted">{c.change_number}</span></td>
+              <td className="font-medium text-sm">{c.title}</td>
+              <td><Badge label={c.type} v={typeV[c.type]||'bd'}/></td>
+              <td><Badge label={c.risk} v={riskV[c.risk]||'bd'}/></td>
+              <td><SBadge s={c.status}/></td>
+              <td className="text-sm text-muted">{c.implementation_date?.slice(0,10)||'—'}</td>
+            </tr>))}</tbody>
+        </table>
+      </div>
+    </div>
+    <Modal open={!!sel} onClose={()=>sSel(null)} title={sel?.change_number}>
+      {sel&&<div style={{display:'flex',flexDirection:'column',gap:14}}>
+        <h3 style={{fontSize:16,fontWeight:700}}>{sel.title}</h3>
+        <div className="g2">{[['Typ',<Badge label={sel.type} v={typeV[sel.type]}/>],['Risiko',<Badge label={sel.risk} v={riskV[sel.risk]}/>],['Status',<SBadge s={sel.status}/>],['Implementierung',sel.implementation_date?.slice(0,10)||'—']].map(([l,v],i)=><div key={i}><div className="text-xs text-muted mb-1">{l}</div><div className="font-medium text-sm">{v}</div></div>)}</div>
+        {sel.description&&<div style={{background:'var(--bg)',borderRadius:8,padding:'10px 12px'}}><div className="text-xs text-muted mb-1">Beschreibung</div><div className="text-sm">{sel.description}</div></div>}
+        {sel.rollback_plan&&<div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'10px 12px'}}><div className="text-xs font-semibold text-muted mb-1">Rollback-Plan</div><div className="text-sm">{sel.rollback_plan}</div></div>}
+      </div>}
+    </Modal>
+    <Modal open={newM} onClose={()=>sNewM(false)} title="Neue Änderung">
+      <NewChange onSave={async(f)=>{await api.post('/api/changes',f);sNewM(false);api.get('/api/changes?limit=50').then(r=>sItems(r.data||[]))}}/>
+    </Modal>
+  </div>;
+};
+
+const NewChange=({onSave})=>{
+  const[f,sF]=useState({title:'',description:'',type:'normal',risk:'medium',rollback_plan:'',implementation_date:'',reason:''});
+  return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+    <div className="form-group"><label className="lbl">Titel *</label><input className="inp" value={f.title} onChange={e=>sF({...f,title:e.target.value})}/></div>
+    <div className="form-group"><label className="lbl">Beschreibung</label><textarea className="inp" rows={3} value={f.description} onChange={e=>sF({...f,description:e.target.value})}/></div>
+    <div className="g3">
+      <div className="form-group"><label className="lbl">Typ</label><select className="inp" value={f.type} onChange={e=>sF({...f,type:e.target.value})}><option value="normal">Normal</option><option value="standard">Standard</option><option value="emergency">Notfall</option></select></div>
+      <div className="form-group"><label className="lbl">Risiko</label><select className="inp" value={f.risk} onChange={e=>sF({...f,risk:e.target.value})}><option value="low">Niedrig</option><option value="medium">Mittel</option><option value="high">Hoch</option></select></div>
+      <div className="form-group"><label className="lbl">Implementierungsdatum</label><input className="inp" type="date" value={f.implementation_date} onChange={e=>sF({...f,implementation_date:e.target.value})}/></div>
+    </div>
+    <div className="form-group"><label className="lbl">Rollback-Plan</label><textarea className="inp" rows={2} value={f.rollback_plan} onChange={e=>sF({...f,rollback_plan:e.target.value})}/></div>
+    <div className="flex justify-end"><button onClick={()=>onSave(f)} disabled={!f.title} className="btn btn-p"><I n="check" s={14}/>Erstellen</button></div>
+  </div>;
+};
+
+// ===== EMAIL INBOX =====
+const EmailInbox=()=>{
+  const[items,sItems]=useState([]);const[loading,sL]=useState(true);const[sel,sSel]=useState(null);const[polling,sPolling]=useState(false);
+  const load=()=>{sL(true);api.get('/api/email/inbox?limit=50').then(r=>{sItems(r.data||[]);sL(false)})};
+  useEffect(()=>{load()},[]);
+  const markRead=async(item)=>{await api.put(`/api/email/inbox/${item.id}/read`,{});sSel(item);load()};
+  const poll=async()=>{sPolling(true);await api.post('/api/email/poll',{});load();sPolling(false)};
+  const initials=name=>(name||'?').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+  return <div className="fade" style={{display:'flex',flexDirection:'column',gap:16}}>
+    <div className="ph">
+      <span className="pt">E-Mail Posteingang <span className="font-medium text-muted" style={{fontSize:14}}>({items.filter(i=>!i.is_read).length} ungelesen)</span></span>
+      <button onClick={poll} className="btn btn-tg btn-sm" disabled={polling}><I n="refresh" s={14}/>{polling?'Wird abgerufen…':'Postfach abrufen'}</button>
+    </div>
+    {loading?<div className="text-muted text-sm" style={{textAlign:'center',padding:40}}>Laden…</div>:items.length===0?
+      <div className="card card-p text-center">
+        <div style={{padding:40}}><I n="mail" s={40} c="text-muted"/><div className="text-muted mt-3">Keine E-Mails. IMAP in den Einstellungen konfigurieren.</div></div>
+      </div>:
+      <div className="card">
+        {items.map((item,i)=>(
+          <div key={i} className={`email-item ${!item.is_read?'unread':''}`} onClick={()=>markRead(item)}>
+            <div className="email-av">{initials(item.from_name||item.from_email)}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div className="flex items-center justify-between gap-2">
+                <span className={`email-subj ${!item.is_read?'font-semibold':''}`}>{item.subject}</span>
+                <span className="email-time">{item.received_at?.slice(0,10)}</span>
+              </div>
+              <div className="text-xs text-muted">{item.from_name||item.from_email}</div>
+              {item.ticket_id&&<Badge label={`Ticket erstellt`} v="bt" style={{marginTop:4}}/>}
+            </div>
+          </div>))}
+      </div>}
+    <Modal open={!!sel} onClose={()=>sSel(null)} lg={true} title={sel?.subject||'E-Mail'}>
+      {sel&&<div style={{display:'flex',flexDirection:'column',gap:12}}>
+        <div className="g2"><div><div className="text-xs text-muted mb-1">Von</div><div className="text-sm font-medium">{sel.from_name} &lt;{sel.from_email}&gt;</div></div><div><div className="text-xs text-muted mb-1">Empfangen</div><div className="text-sm">{sel.received_at?.slice(0,16)}</div></div></div>
+        {sel.ticket_id&&<div className="alert alert-i"><I n="link" s={14}/>Ticket wurde automatisch erstellt</div>}
+        <div style={{background:'var(--bg)',borderRadius:8,padding:'12px 14px',fontFamily:'monospace',fontSize:12,maxHeight:320,overflow:'auto',whiteSpace:'pre-wrap',wordBreak:'break-word'}}>{sel.body?.slice(0,3000)}</div>
+      </div>}
+    </Modal>
+  </div>;
+};
+
+// ===== EMAIL SETTINGS =====
+const EmailSettings=()=>{
+  const[cfg,sCfg]=useState({smtp_host:'',smtp_port:587,smtp_user:'',smtp_pass:'',smtp_secure:false,imap_host:'',imap_port:993,imap_user:'',imap_pass:'',from_name:'ServiceDesk Pro',from_email:'',notifications_enabled:true,auto_ticket_enabled:true});
+  const[msg,sMsg]=useState(null);const[testing,sTesting]=useState(false);
+  useEffect(()=>{api.get('/api/email/config').then(r=>{if(!r.error)sCfg({...cfg,...r,smtp_secure:r.smtp_secure===1,notifications_enabled:r.notifications_enabled===1,auto_ticket_enabled:r.auto_ticket_enabled===1})})},[]);
+  const save=async()=>{const r=await api.put('/api/email/config',cfg);if(r.success)sMsg({t:'s',m:'Einstellungen gespeichert'});else sMsg({t:'e',m:r.error})};
+  const testSmtp=async()=>{sTesting(true);const r=await api.post('/api/email/test-smtp',{});sMsg(r.success?{t:'s',m:r.message}:{t:'e',m:r.error});sTesting(false)};
+  const F=({label,k,type='text',placeholder=''})=><div className="form-group"><label className="lbl">{label}</label><input className="inp" type={type} placeholder={placeholder} value={cfg[k]||''} onChange={e=>sCfg({...cfg,[k]:type==='number'?parseInt(e.target.value):e.target.value})}/></div>;
+  const C=({label,k})=><label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={!!cfg[k]} onChange={e=>sCfg({...cfg,[k]:e.target.checked})}/>{label}</label>;
+  return <div className="fade" style={{display:'flex',flexDirection:'column',gap:16}}>
+    <div className="ph"><span className="pt">E-Mail Einstellungen</span><div className="flex gap-2"><button onClick={testSmtp} className="btn btn-tg btn-sm" disabled={testing}><I n="check" s={14}/>{testing?'Teste…':'SMTP testen'}</button><button onClick={save} className="btn btn-p btn-sm"><I n="check" s={14}/>Speichern</button></div></div>
+    {msg&&<div className={`alert ${msg.t==='s'?'alert-s':'alert-e'}`}><I n={msg.t==='s'?'check':'alertC'} s={14}/>{msg.m}</div>}
+    <div className="sett-card">
+      <div className="sett-title">SMTP – Ausgehende E-Mails</div>
+      <div className="sett-desc">Für Benachrichtigungen und Antworten aus Tickets</div>
+      <div className="g2"><F label="SMTP Host" k="smtp_host" placeholder="smtp.gmail.com"/><F label="SMTP Port" k="smtp_port" type="number"/><F label="Benutzername" k="smtp_user" placeholder="user@gmail.com"/><F label="Passwort" k="smtp_pass" type="password" placeholder="App-Passwort"/><F label="Absender Name" k="from_name"/><F label="Absender E-Mail" k="from_email" placeholder="servicedesk@example.com"/></div>
+      <div className="mt-3"><C label="SSL/TLS verwenden" k="smtp_secure"/></div>
+    </div>
+    <div className="sett-card">
+      <div className="sett-title">IMAP – Eingehende E-Mails</div>
+      <div className="sett-desc">E-Mails abrufen und automatisch Tickets erstellen</div>
+      <div className="g2"><F label="IMAP Host" k="imap_host" placeholder="imap.gmail.com"/><F label="IMAP Port" k="imap_port" type="number"/><F label="Benutzername" k="imap_user"/><F label="Passwort" k="imap_pass" type="password"/></div>
+    </div>
+    <div className="sett-card">
+      <div className="sett-title">Verhalten</div>
+      <div style={{display:'flex',flexDirection:'column',gap:10,marginTop:8}}><C label="E-Mail-Benachrichtigungen senden (bei Ticket-Erstellung und Status-Änderungen)" k="notifications_enabled"/><C label="Automatisch Ticket erstellen wenn E-Mail eingeht" k="auto_ticket_enabled"/></div>
+    </div>
+  </div>;
+};
+
+// ===== REPORTING =====
+const Reporting=()=>{
+  const[data,sData]=useState(null);const[days,sDays]=useState(30);
+  useEffect(()=>{api.get(`/api/reports/overview?days=${days}`).then(sData)},[days]);
+  const statusColors={'open':'#3b82f6','inProgress':'#f59e0b','pending':'#8b5cf6','resolved':'#10b981','closed':'#64748b'};
+  const prioColors={'critical':'#ef4444','high':'#f97316','medium':'#eab308','low':'#22c55e'};
+  if(!data)return <div className="text-muted text-sm" style={{textAlign:'center',padding:40}}>Laden…</div>;
+  return <div className="fade" style={{display:'flex',flexDirection:'column',gap:16}}>
+    <div className="ph"><span className="pt">Berichte</span>
+      <select className="inp" style={{width:'auto'}} value={days} onChange={e=>sDays(parseInt(e.target.value))}><option value={7}>Letzte 7 Tage</option><option value={30}>Letzte 30 Tage</option><option value={90}>Letzte 90 Tage</option></select>
+    </div>
+    <div className="g4">
+      <KPI icon="ticket" label="Gesamt Tickets" value={data.totalTickets} color="#0d9488"/>
+      <KPI icon="check" label="Gelöst" value={data.resolved} color="#10b981"/>
+      <KPI icon="clock" label="Ø Lösungszeit" value={`${data.avgResolution}h`} color="#f59e0b"/>
+      <KPI icon="shield" label="SLA-Quote" value={`${data.slaRate}%`} color="#8b5cf6"/>
+    </div>
+    <div className="g2">
+      <div className="card card-p"><div className="font-semibold mb-4">Nach Status</div>
+        <PieChart data={(data.byStatus||[]).map(d=>({name:d.status,value:d.count,color:statusColors[d.status]||'#94a3b8'}))} size={180}/>
+      </div>
+      <div className="card card-p"><div className="font-semibold mb-4">Nach Priorität</div>
+        <PieChart data={(data.byPriority||[]).map(d=>({name:d.priority,value:d.count,color:prioColors[d.priority]||'#94a3b8'}))} size={180}/>
+      </div>
+    </div>
+    {data.trend?.length>0&&<div className="card card-p"><div className="font-semibold mb-4">Ticket-Trend</div>
+      <LineChart data={data.trend} lines={[{key:'created',color:'#0d9488',name:'Erstellt'}]} height={220} xKey="date"/>
+    </div>}
+    {data.byCategory?.length>0&&<div className="card card-p"><div className="font-semibold mb-4">Top Kategorien</div>
+      <BarChart data={data.byCategory} valueKey="count" nameKey="category" height={220}/>
+    </div>}
+  </div>;
+};
+
+// ===== SELF SERVICE =====
+const SelfService=({onNav})=>{
+  const[sq,sSQ]=useState('');const[tab,sTab]=useState('kb');const[articles,sArticles]=useState([]);
+  useEffect(()=>{api.get('/api/kb').then(sArticles)},[]);
+  const fil=useMemo(()=>sq?articles.filter(a=>a.title.toLowerCase().includes(sq.toLowerCase())||a.category.toLowerCase().includes(sq.toLowerCase())):articles,[sq,articles]);
+  return <div className="fade" style={{display:'flex',flexDirection:'column',gap:20}}>
+    <div style={{background:'linear-gradient(135deg,#0f172a,#0d9488)',borderRadius:14,padding:'36px 28px',textAlign:'center'}}>
+      <div style={{fontSize:22,fontWeight:700,color:'#fff',marginBottom:6}}>Wie können wir Ihnen helfen?</div>
+      <div style={{color:'rgba(255,255,255,.6)',fontSize:13,marginBottom:20}}>Suchen Sie in der Wissensdatenbank oder stellen Sie eine Anfrage</div>
+      <div style={{maxWidth:480,margin:'0 auto',position:'relative'}}>
+        <input className="inp" placeholder="Wissensdatenbank durchsuchen…" value={sq} onChange={e=>sSQ(e.target.value)} style={{paddingLeft:36}}/>
+        <span style={{position:'absolute',left:10,top:10,color:'#64748b'}}><I n="search" s={15}/></span>
+      </div>
+    </div>
+    <div className="tabs">
+      {[{k:'kb',l:'Wissensdatenbank',ic:'book'},{k:'submit',l:'Anfrage stellen',ic:'send'},{k:'my',l:'Meine Tickets',ic:'ticket'}].map(tb=>(
+        <button key={tb.k} onClick={()=>sTab(tb.k)} className={`tab ${tab===tb.k?'active':''}`}><I n={tb.ic} s={13}/>{tb.l}</button>))}
+    </div>
+    {tab==='kb'&&<div className="g2">
+      {fil.map((a,i)=>(
+        <div key={i} className="card card-p" style={{cursor:'pointer',transition:'box-shadow .15s'}} onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'} onMouseLeave={e=>e.currentTarget.style.boxShadow=''}>
+          <div className="flex items-center justify-between">
+            <Badge label={a.category} v="bt"/>
+            <I n="chevR" s={14} c="text-muted"/>
+          </div>
+          <div className="font-semibold mt-3 mb-1" style={{fontSize:14}}>{a.title}</div>
+          <div className="flex gap-3 text-xs text-muted mt-2">
+            <span><I n="eye" s={11}/> {a.views}</span>
+            <span><I n="check" s={11}/> {a.helpful_count||0} hilfreich</span>
+          </div>
+        </div>))}
+    </div>}
+    {tab==='submit'&&<div className="g3">
+      {[{ic:'laptop',l:'Hardware-Anfrage',d:'Neues Gerät, Reparatur'},{ic:'db',l:'Software',d:'Lizenzen, Updates'},{ic:'wifi',l:'Netzwerk & Zugang',d:'VPN, WiFi, Passwort'},{ic:'mail',l:'E-Mail',d:'Teams, Telefonie'},{ic:'shield',l:'Sicherheit',d:'Datenschutz, Zugriffsrechte'},{ic:'help',l:'Sonstiges',d:'Andere Anfragen'}].map((c,i)=>(
+        <button key={i} onClick={()=>onNav('tickets')} className="card card-p text-left" style={{cursor:'pointer',display:'flex',flexDirection:'column',gap:8,transition:'box-shadow .15s'}} onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'} onMouseLeave={e=>e.currentTarget.style.boxShadow=''}>
+          <div style={{width:38,height:38,background:'var(--pb)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center'}}><I n={c.ic} s={18} c="text-teal"/></div>
+          <div className="font-semibold text-sm">{c.l}</div>
+          <div className="text-xs text-muted">{c.d}</div>
+        </button>))}
+    </div>}
+    {tab==='my'&&<div className="card"><div style={{padding:'14px 16px',borderBottom:'1px solid var(--bd)',fontWeight:600}}>Meine offenen Tickets</div><div className="text-muted text-sm" style={{padding:24,textAlign:'center'}}>Bitte im Ticket-Bereich nach Ihren Tickets suchen.</div></div>}
+  </div>;
+};
+
+
+// ===== PROFILE MODAL =====
+function Profile({user, onClose, onUpdate}){
+  const[tab,sTab]=useState('profile');
+  const[form,sForm]=useState({full_name:user.full_name||'',email:user.email||'',department:user.department||'',phone:user.phone||'',lang:user.lang||'de'});
+  const[pw,sPw]=useState({current:'',next:'',confirm:''});
+  const[msg,sMsg]=useState(null);
+  const[err,sErr]=useState(null);
+  const[saving,sSaving]=useState(false);
+
+  const saveProfile=async()=>{
+    sSaving(true);sMsg(null);sErr(null);
+    try{const r=await api.put('/api/profile',form);onUpdate(r);sMsg('Profil gespeichert.');}
+    catch(e){sErr(e.message||'Fehler beim Speichern.');}
+    sSaving(false);
+  };
+
+  const savePw=async()=>{
+    if(pw.next!==pw.confirm){sErr('Passwoerter stimmen nicht ueberein.');return;}
+    if(pw.next.length<8){sErr('Mindestens 8 Zeichen erforderlich.');return;}
+    sSaving(true);sMsg(null);sErr(null);
+    try{await api.put('/api/profile/password',{current_password:pw.current,new_password:pw.next});sMsg('Passwort geaendert.');sPw({current:'',next:'',confirm:''});}
+    catch(e){sErr(e.message||'Falsches Passwort oder Fehler.');}
+    sSaving(false);
+  };
+
+  const initials=(n)=>(n||'?').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
+
+  return React.createElement('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:16},onClick:e=>{if(e.target===e.currentTarget)onClose()}},
+    React.createElement('div',{className:'card',style:{width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto',borderRadius:16}},
+      React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px',borderBottom:'1px solid var(--bd)'}},
+        React.createElement('div',{style:{display:'flex',alignItems:'center',gap:12}},
+          React.createElement('div',{className:'uavatar',style:{width:44,height:44,fontSize:16,borderRadius:12}},initials(user.full_name||user.username)),
+          React.createElement('div',null,
+            React.createElement('div',{style:{fontWeight:700,fontSize:16}},user.full_name||user.username),
+            React.createElement('div',{className:'text-xs text-muted'},(user.role||'')+' \u00b7 '+(user.department||'\u2013'))
+          )
+        ),
+        React.createElement('button',{onClick:onClose,style:{background:'none',border:'none',cursor:'pointer',color:'var(--st)',padding:6,borderRadius:8,display:'flex'}},React.createElement(I,{n:'x',s:18}))
+      ),
+      React.createElement('div',{style:{display:'flex',borderBottom:'1px solid var(--bd)'}},
+        [['profile','Mein Profil'],['password','Passwort']].map(([k,l])=>
+          React.createElement('button',{key:k,onClick:()=>{sTab(k);sMsg(null);sErr(null);},style:{flex:1,padding:'12px 0',background:'none',border:'none',borderBottom:tab===k?'2px solid var(--pt)':'2px solid transparent',cursor:'pointer',fontWeight:tab===k?600:400,color:tab===k?'var(--pt)':'var(--tm)',fontSize:14,transition:'color .15s'}},l)
+        )
+      ),
+      React.createElement('div',{style:{padding:24}},
+        msg&&React.createElement('div',{style:{marginBottom:16,padding:'10px 14px',background:'rgba(13,148,136,.12)',borderRadius:8,color:'#0d9488',fontSize:13}},msg),
+        err&&React.createElement('div',{style:{marginBottom:16,padding:'10px 14px',background:'rgba(239,68,68,.1)',borderRadius:8,color:'#ef4444',fontSize:13}},err),
+        tab==='profile'&&React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:16}},
+          React.createElement('div',null,React.createElement('label',{className:'lbl'},'Vollst\u00e4ndiger Name'),React.createElement('input',{className:'inp',value:form.full_name,onChange:e=>sForm({...form,full_name:e.target.value}),placeholder:'Max Mustermann'})),
+          React.createElement('div',null,React.createElement('label',{className:'lbl'},'E-Mail'),React.createElement('input',{className:'inp',type:'email',value:form.email,onChange:e=>sForm({...form,email:e.target.value}),placeholder:'max@firma.de'})),
+          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}},
+            React.createElement('div',null,React.createElement('label',{className:'lbl'},'Abteilung'),React.createElement('input',{className:'inp',value:form.department,onChange:e=>sForm({...form,department:e.target.value}),placeholder:'IT'})),
+            React.createElement('div',null,React.createElement('label',{className:'lbl'},'Telefon'),React.createElement('input',{className:'inp',value:form.phone,onChange:e=>sForm({...form,phone:e.target.value}),placeholder:'+49 ...'}))
+          ),
+          React.createElement('div',null,React.createElement('label',{className:'lbl'},'Sprache'),
+            React.createElement('select',{className:'inp',value:form.lang,onChange:e=>sForm({...form,lang:e.target.value})},
+              React.createElement('option',{value:'de'},'Deutsch'),
+              React.createElement('option',{value:'en'},'English')
+            )
+          ),
+          React.createElement('button',{className:'btn btn-primary',onClick:saveProfile,disabled:saving,style:{marginTop:4}},saving?'Speichern\u2026':'Profil speichern')
+        ),
+        tab==='password'&&React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:16}},
+          React.createElement('div',null,React.createElement('label',{className:'lbl'},'Aktuelles Passwort'),React.createElement('input',{className:'inp',type:'password',value:pw.current,onChange:e=>sPw({...pw,current:e.target.value}),placeholder:'\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'})),
+          React.createElement('div',null,React.createElement('label',{className:'lbl'},'Neues Passwort'),React.createElement('input',{className:'inp',type:'password',value:pw.next,onChange:e=>sPw({...pw,next:e.target.value}),placeholder:'Mindestens 8 Zeichen'})),
+          React.createElement('div',null,React.createElement('label',{className:'lbl'},'Passwort best\u00e4tigen'),React.createElement('input',{className:'inp',type:'password',value:pw.confirm,onChange:e=>sPw({...pw,confirm:e.target.value}),placeholder:'Wiederholung'})),
+          React.createElement('button',{className:'btn btn-primary',onClick:savePw,disabled:saving||!pw.current||!pw.next,style:{marginTop:4}},saving?'\u00c4ndern\u2026':'Passwort \u00e4ndern')
+        )
+      )
+    )
+  );
+}
+
+// ===== MAIN APP =====
+function App(){
+  const[user,sUser]=useState(null);const[loading,sLoading]=useState(true);const[mod,sMod]=useState('dashboard');const[sb,sSB]=useState(true);const[showProfile,sShowProfile]=useState(false);
+  useEffect(()=>{const t=localStorage.getItem('sd_tok');if(t){api.get('/api/auth/me').then(u=>{if(u&&u.id)sUser(u);sLoading(false)}).catch(()=>sLoading(false))}else{sLoading(false)}},[]);
+  const logout=()=>{localStorage.removeItem('sd_tok');sUser(null);sMod('dashboard')};
+  if(loading)return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)'}}><div className="text-muted">Wird geladen…</div></div>;
+  if(!user)return <Login onLogin={u=>{sUser(u);sMod('dashboard')}}/>;
+
+  const nav=[
+    {section:'Übersicht',items:[{k:'dashboard',ic:'dashboard',l:'Dashboard'}]},
+    {section:'ITSM',items:[{k:'tickets',ic:'ticket',l:'Tickets'},{k:'incidents',ic:'alert',l:'Vorfälle'},{k:'changes',ic:'git',l:'Änderungen'}]},
+    {section:'Verwaltung',items:[{k:'assets',ic:'monitor',l:'Assets'},{k:'selfService',ic:'globe',l:'Self-Service'},{k:'reporting',ic:'chart',l:'Berichte'}]},
+    {section:'E-Mail',items:[{k:'emailInbox',ic:'mail',l:'Posteingang'},{k:'emailSettings',ic:'settings',l:'E-Mail Einstellungen'}]},
+  ];
+
+  const view=()=>{
+    switch(mod){
+      case 'dashboard': return <Dash user={user} onNav={sMod} stats={{}}/>;
+      case 'tickets': return <Tickets user={user}/>;
+      case 'incidents': return <Incidents/>;
+      case 'changes': return <Changes/>;
+      case 'assets': return <Assets/>;
+      case 'selfService': return <SelfService onNav={sMod}/>;
+      case 'reporting': return <Reporting/>;
+      case 'emailInbox': return <EmailInbox/>;
+      case 'emailSettings': return <EmailSettings/>;
+      default: return <Dash user={user} onNav={sMod} stats={{}}/>;
+    }
+  };
+
+  const initials=(n)=>(n||'?').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
+
+  return <div className="app">
+    <aside className={`sidebar ${sb?'open':'closed'}`}>
+      <div className="sb-logo">
+        <div className="sb-logo-icon"><I n="ticket" s={18} c="" style={{color:'#fff'}}/></div>
+        {sb&&<div><div className="sb-logo-name">ServiceDesk Pro</div><div className="sb-logo-sub">v2.0</div></div>}
+      </div>
+      <nav className="sb-nav">
+        {nav.map((section,si)=><Fragment key={si}>
+          {sb&&<div className="sb-section">{section.section}</div>}
+          {section.items.map(it=>(
+            <button key={it.k} onClick={()=>sMod(it.k)} title={!sb?it.l:undefined} className={`nav-item ${mod===it.k?'active':''}`}>
+              <I n={it.ic} s={16} c="nav-icon"/>
+              {sb&&<span className="nav-label">{it.l}</span>}
+            </button>))}
+        </Fragment>)}
+      </nav>
+      <div className="sb-footer">
+        <div className="user-row" onClick={()=>sShowProfile(true)} title="Mein Profil">
+          <div className="uavatar">{initials(user.full_name||user.name)}</div>
+          {sb&&<div style={{flex:1,minWidth:0}}><div className="uname truncate">{user.full_name||user.name}</div><div className="urole">{user.role}</div></div>}
+          {sb&&<button onClick={e=>{e.stopPropagation();logout()}} title="Abmelden" style={{background:'none',border:'none',cursor:'pointer',color:'var(--st)',padding:4,borderRadius:6}}><I n="logout" s={14}/></button>}
+        </div>
+      </div>
+    </aside>
+    <div className="main">
+      <div className="topbar">
+        <div className="flex items-center gap-3">
+          <button onClick={()=>sSB(!sb)} className="ico-btn"><I n="menu" s={18}/></button>
+          <div className="search-wrap">
+            <I n="search" s={14} c="search-ico"/>
+            <input className="search-input" placeholder="Suchen…"/>
+          </div>
+        </div>
+        <div className="tb-actions">
+          <button className="ico-btn"><I n="bell" s={17}/><span className="ndot"/></button>
+          <div className="tb-div"/>
+          <div className="tb-user" onClick={()=>sShowProfile(true)} title="Mein Profil">
+            <div className="tb-av">{initials(user.full_name||user.name)}</div>
+            <span className="text-sm font-medium">{(user.full_name||user.name)?.split(' ')[0]}</span>
+          </div>
+        </div>
+      </div>
+      <div className="content">{view()}</div>
+    </div>
+  </div>
+  {showProfile&&<Profile user={user} onClose={()=>sShowProfile(false)} onUpdate={u=>{sUser({...user,...u});}}/>};
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById('root'));
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "servicedesk-pro",
+  "version": "1.0.0",
+  "description": "ServiceDesk Pro - Ticketsystem für Raspberry Pi",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "setup-db": "node src/setup-db.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.0.0",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "imapflow": "^1.2.18",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "nodemailer": "^8.0.4"
+  }
+}

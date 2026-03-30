@@ -1,0 +1,8 @@
+node_modules/
+db/*.db
+db/*.db-shm
+db/*.db-wal
+.env
+*.log
+.DS_Store
+nohup.out
